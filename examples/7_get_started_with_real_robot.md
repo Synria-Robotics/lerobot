@@ -1,62 +1,62 @@
-# Getting Started with Real-World Robots
+# 实操机器人入门指南
 
-This tutorial will guide you through the process of setting up and training a neural network to autonomously control a real robot.
+本教程将指导您完成设置和训练神经网络以自主控制真实机器人的过程。
 
-**What You'll Learn:**
-1. How to order and assemble your robot.
-2. How to connect, configure, and calibrate your robot.
-3. How to record and visualize your dataset.
-4. How to train a policy using your data and prepare it for evaluation.
-5. How to evaluate your policy and visualize the results.
+**您将学习的内容：**
+1. 如何订购和组装机器人。
+2. 如何连接、配置和校准机器人。
+3. 如何记录和可视化您的数据集。
+4. 如何使用您的数据训练策略并准备评估。
+5. 如何评估您的策略并可视化结果。
 
-By following these steps, you'll be able to replicate tasks like picking up a Lego block and placing it in a bin with a high success rate, as demonstrated in [this video](https://x.com/RemiCadene/status/1814680760592572934).
+通过以下步骤，您将能够以高成功率复制诸如拾取乐高积木并将其放入箱中的任务，如[此视频](https://x.com/RemiCadene/status/1814680760592572934)所示。
 
-This tutorial is specifically made for the affordable [Koch v1.1](https://github.com/jess-moss/koch-v1-1) robot, but it contains additional information to be easily adapted to various types of robots like [Aloha bimanual robot](https://aloha-2.github.io) by changing some configurations. The Koch v1.1 consists of a leader arm and a follower arm, each with 6 motors. It can work with one or several cameras to record the scene, which serve as visual sensors for the robot.
+本教程专门为经济实惠的[Koch v1.1](https://github.com/jess-moss/koch-v1-1)机器人设计，但它包含了额外信息，通过更改一些配置可以轻松适应各种类型的机器人，如[Aloha双臂机器人](https://aloha-2.github.io)。Koch v1.1由一个引导臂和一个跟随臂组成，每个臂有6个电机。它可以与一个或多个摄像头配合使用来记录场景，这些摄像头作为机器人的视觉传感器。
 
-During the data collection phase, you will control the follower arm by moving the leader arm. This process is known as "teleoperation." This technique is used to collect robot trajectories. Afterward, you'll train a neural network to imitate these trajectories and deploy the network to enable your robot to operate autonomously.
+在数据收集阶段，您将通过移动引导臂来控制跟随臂。这一过程被称为"远程操作"。这种技术用于收集机器人轨迹。之后，您将训练神经网络模仿这些轨迹，并部署该网络以使您的机器人能够自主运行。
 
-If you encounter any issues at any step of the tutorial, feel free to seek help on [Discord](https://discord.com/invite/s3KuuzsPFb) or don't hesitate to iterate with us on the tutorial by creating issues or pull requests. Thanks!
+如果您在教程的任何步骤中遇到问题，请随时在[Discord](https://discord.com/invite/s3KuuzsPFb)上寻求帮助，或者通过创建问题或拉取请求与我们一起迭代改进本教程。谢谢！
 
-## 1. Order and Assemble your Koch v1.1
+## 1. 订购并组装Koch v1.1
 
-Follow the sourcing and assembling instructions provided on the [Koch v1.1 Github page](https://github.com/jess-moss/koch-v1-1). This will guide you through setting up both the follower and leader arms, as shown in the image below.
+按照[Koch v1.1 Github页面](https://github.com/jess-moss/koch-v1-1)提供的采购和组装说明进行操作。这将指导您设置引导臂和跟随臂，如下图所示。
 
 <div style="text-align:center;">
-  <img src="../media/tutorial/koch_v1_1_leader_follower.webp?raw=true" alt="Koch v1.1 leader and follower arms" title="Koch v1.1 leader and follower arms" width="50%">
+  <img src="../media/tutorial/koch_v1_1_leader_follower.webp?raw=true" alt="Koch v1.1引导臂和跟随臂" title="Koch v1.1引导臂和跟随臂" width="50%">
 </div>
 
-For a visual walkthrough of the assembly process, you can refer to [this video tutorial](https://youtu.be/8nQIg9BwwTk).
+想要了解组装过程的可视化演示，您可以参考[此视频教程](https://youtu.be/8nQIg9BwwTk)。
 
-## 2. Configure motors, calibrate arms, teleoperate your Koch v1.1
+## 2. 配置电机，校准手臂，远程操作您的Koch v1.1
 
-First, install the additional dependencies required for robots built with dynamixel motors like Koch v1.1 by running one of the following commands (make sure gcc is installed).
+首先，通过运行以下命令之一安装Koch v1.1等使用dynamixel电机构建的机器人所需的额外依赖项（确保已安装gcc）。
 
-Using `pip`:
+使用`pip`：
 ```bash
 pip install -e ".[dynamixel]"
 ```
 
-Using `poetry`:
+使用`poetry`：
 ```bash
 poetry sync --extras "dynamixel"
 ```
 
-Using `uv`:
+使用`uv`：
 ```bash
 uv sync --extra "dynamixel"
 ```
 
-You are now ready to plug the 5V power supply to the motor bus of the leader arm (the smaller one) since all its motors only require 5V.
+现在您可以将5V电源插入引导臂（较小的那个）的电机总线，因为它的所有电机只需要5V。
 
-Then plug the 12V power supply to the motor bus of the follower arm. It has two motors that need 12V, and the rest will be powered with 5V through the voltage convertor.
+然后将12V电源插入跟随臂的电机总线。它有两个需要12V的电机，其余的将通过电压转换器以5V供电。
 
-Finally, connect both arms to your computer via USB. Note that the USB doesn't provide any power, and both arms need to be plugged in with their associated power supply to be detected by your computer.
+最后，通过USB将两个臂都连接到您的计算机。请注意，USB不提供任何电源，两个臂都需要插入各自的电源才能被您的计算机检测到。
 
-Now you are ready to configure your motors for the first time, as detailed in the sections below. In the upcoming sections, you'll learn about our classes and functions by running some python code in an interactive session, or by copy-pasting it in a python file.
+现在您已经准备好首次配置电机，详情如下节所述。在接下来的部分中，您将通过在交互式Python会话中运行一些Python代码，或者将其复制粘贴到Python文件中，来了解我们的类和函数。
 
-If you have already configured your motors the first time, you can streamline the process by directly running the teleoperate script (which is detailed further in the tutorial):
+如果您已经首次配置了电机，可以通过直接运行远程操作脚本来简化流程（详情在教程后面部分）：
 
-> **NOTE:** To visualize the data, enable `--control.display_data=true`. This streams the data using `rerun`.
+> **注意：** 要可视化数据，请启用`--control.display_data=true`。这将使用`rerun`流式传输数据。
 
 ```bash
 python lerobot/scripts/control_robot.py \
@@ -64,19 +64,19 @@ python lerobot/scripts/control_robot.py \
   --control.type=teleoperate
 ```
 
-It will automatically:
-1. Identify any missing calibrations and initiate the calibration procedure.
-2. Connect the robot and start teleoperation.
+它将自动：
+1. 识别任何缺失的校准并启动校准程序。
+2. 连接机器人并开始远程操作。
 
-### a. Control your motors with DynamixelMotorsBus
+### a. 使用DynamixelMotorsBus控制您的电机
 
-You can use the [`DynamixelMotorsBus`](../lerobot/common/robot_devices/motors/dynamixel.py) to communicate with the motors connected as a chain to the corresponding USB bus. This class leverages the Python [Dynamixel SDK](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/sample_code/python_read_write_protocol_2_0/#python-read-write-protocol-20) to facilitate reading from and writing to the motors.
+您可以使用[`DynamixelMotorsBus`](../lerobot/common/robot_devices/motors/dynamixel.py)与连接到相应USB总线的电机链进行通信。这个类利用Python [Dynamixel SDK](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/sample_code/python_read_write_protocol_2_0/#python-read-write-protocol-20)来简化对电机的读写操作。
 
-**First Configuration of your motors**
+**首次配置您的电机**
 
-You will need to unplug each motor in turn and run a command the identify the motor. The motor will save its own identification, so you only need to do this once. Start by unplugging all of the motors.
+您需要依次拔掉每个电机并运行一个命令来识别电机。电机将保存自己的标识，所以您只需执行一次。首先拔掉所有电机。
 
-Do the Leader arm first, as all of its motors are of the same type. Plug in your first motor on your leader arm and run this script to set its ID to 1.
+先从引导臂开始，因为它的所有电机都是同一类型。插入引导臂的第一个电机，然后运行此脚本将其ID设置为1。
 ```bash
 python lerobot/scripts/configure_motor.py \
   --port /dev/tty.usbmodem58760432961 \
@@ -86,7 +86,7 @@ python lerobot/scripts/configure_motor.py \
   --ID 1
 ```
 
-Then unplug your first motor and plug the second motor and set its ID to 2.
+然后拔掉第一个电机，插入第二个电机并将其ID设置为2。
 ```bash
 python lerobot/scripts/configure_motor.py \
   --port /dev/tty.usbmodem58760432961 \
@@ -96,56 +96,56 @@ python lerobot/scripts/configure_motor.py \
   --ID 2
 ```
 
-Redo the process for all your motors until ID 6.
+对所有电机重复此过程，直到ID 6。
 
-The process for the follower arm is almost the same, but the follower arm has two types of motors. For the first two motors, make sure you set the model to `xl430-w250`. _Important: configuring follower motors requires plugging and unplugging power. Make sure you use the 5V power for the XL330s and the 12V power for the XL430s!_
+跟随臂的过程几乎相同，但跟随臂有两种类型的电机。对于前两个电机，确保将模型设置为`xl430-w250`。_重要提示：配置跟随电机需要插拔电源。确保为XL330使用5V电源，为XL430使用12V电源！_
 
-After all of your motors are configured properly, you're ready to plug them all together in a daisy-chain as shown in the original video.
+当所有电机都正确配置后，您就可以按照原始视频所示，将它们以菊花链方式全部连接起来。
 
-**Instantiate the DynamixelMotorsBus**
+**实例化DynamixelMotorsBus**
 
-To begin, create two instances of the  [`DynamixelMotorsBus`](../lerobot/common/robot_devices/motors/dynamixel.py), one for each arm, using their corresponding USB ports (e.g. `DynamixelMotorsBus(port="/dev/tty.usbmodem575E0031751"`).
+首先，为每个手臂创建两个[`DynamixelMotorsBus`](../lerobot/common/robot_devices/motors/dynamixel.py)实例，使用它们相应的USB端口（例如`DynamixelMotorsBus(port="/dev/tty.usbmodem575E0031751")`）。
 
-To find the correct ports for each arm, run the utility script twice:
+要找到每个手臂的正确端口，运行实用程序脚本两次：
 ```bash
 python lerobot/scripts/find_motors_bus_port.py
 ```
 
-Example output when identifying the leader arm's port (e.g., `/dev/tty.usbmodem575E0031751` on Mac, or possibly `/dev/ttyACM0` on Linux):
+识别引导臂端口时的示例输出（例如，Mac上的`/dev/tty.usbmodem575E0031751`，或者Linux上可能是`/dev/ttyACM0`）：
 ```
 Finding all available ports for the MotorBus.
 ['/dev/tty.usbmodem575E0032081', '/dev/tty.usbmodem575E0031751']
 Remove the usb cable from your DynamixelMotorsBus and press Enter when done.
 
-[...Disconnect leader arm and press Enter...]
+[...断开引导臂连接并按Enter...]
 
 The port of this DynamixelMotorsBus is /dev/tty.usbmodem575E0031751
 Reconnect the usb cable.
 ```
 
-Example output when identifying the follower arm's port (e.g., `/dev/tty.usbmodem575E0032081`, or possibly `/dev/ttyACM1` on Linux):
+识别跟随臂端口时的示例输出（例如，`/dev/tty.usbmodem575E0032081`，或者Linux上可能是`/dev/ttyACM1`）：
 ```
 Finding all available ports for the MotorBus.
 ['/dev/tty.usbmodem575E0032081', '/dev/tty.usbmodem575E0031751']
 Remove the usb cable from your DynamixelMotorsBus and press Enter when done.
 
-[...Disconnect follower arm and press Enter...]
+[...断开跟随臂连接并按Enter...]
 
 The port of this DynamixelMotorsBus is /dev/tty.usbmodem575E0032081
 Reconnect the usb cable.
 ```
 
-Troubleshooting: On Linux, you might need to give access to the USB ports by running this command with your ports:
+故障排除：在Linux上，您可能需要通过运行以下命令来授予USB端口访问权限：
 ```bash
 sudo chmod 666 /dev/tty.usbmodem575E0032081
 sudo chmod 666 /dev/tty.usbmodem575E0031751
 ```
 
-*Listing and Configuring Motors*
+*列出和配置电机*
 
-Next, you'll need to list the motors for each arm, including their name, index, and model. Initially, each motor is assigned the factory default index `1`. Since each motor requires a unique index to function correctly when connected in a chain on a common bus, you'll need to assign different indices. It's recommended to use an ascending index order, starting from `1` (e.g., `1, 2, 3, 4, 5, 6`). These indices will be saved in the persistent memory of each motor during the first connection.
+接下来，您需要列出每个手臂的电机，包括它们的名称、索引和型号。最初，每个电机都分配了出厂默认索引`1`。由于每个电机在连接到公共总线的链上时需要唯一的索引才能正常工作，您需要分配不同的索引。建议使用升序索引顺序，从`1`开始（例如，`1, 2, 3, 4, 5, 6`）。这些索引将在首次连接期间保存在每个电机的持久内存中。
 
-To assign indices to the motors, run this code in an interactive Python session. Replace the `port` values with the ones you identified earlier:
+要为电机分配索引，在交互式Python会话中运行以下代码。将`port`值替换为您之前识别的值：
 ```python
 from lerobot.common.robot_devices.motors.configs import DynamixelMotorsBusConfig
 from lerobot.common.robot_devices.motors.dynamixel import DynamixelMotorsBus
@@ -153,7 +153,7 @@ from lerobot.common.robot_devices.motors.dynamixel import DynamixelMotorsBus
 leader_config = DynamixelMotorsBusConfig(
     port="/dev/tty.usbmodem575E0031751",
     motors={
-        # name: (index, model)
+        # 名称: (索引, 型号)
         "shoulder_pan": (1, "xl330-m077"),
         "shoulder_lift": (2, "xl330-m077"),
         "elbow_flex": (3, "xl330-m077"),
@@ -166,7 +166,7 @@ leader_config = DynamixelMotorsBusConfig(
 follower_config = DynamixelMotorsBusConfig(
     port="/dev/tty.usbmodem575E0032081",
     motors={
-        # name: (index, model)
+        # 名称: (索引, 型号)
         "shoulder_pan": (1, "xl430-w250"),
         "shoulder_lift": (2, "xl430-w250"),
         "elbow_flex": (3, "xl330-m288"),
@@ -180,23 +180,22 @@ leader_arm = DynamixelMotorsBus(leader_config)
 follower_arm = DynamixelMotorsBus(follower_config)
 ```
 
-IMPORTANTLY: Now that you have your ports, update [`KochRobotConfig`](../lerobot/common/robot_devices/robots/configs.py). You will find something like:
+重要提示：现在您已经有了端口，请更新[`KochRobotConfig`](../lerobot/common/robot_devices/robots/configs.py)。您会找到类似以下内容：
 ```python
 @RobotConfig.register_subclass("koch")
 @dataclass
 class KochRobotConfig(ManipulatorRobotConfig):
     calibration_dir: str = ".cache/calibration/koch"
-    # `max_relative_target` limits the magnitude of the relative positional target vector for safety purposes.
-    # Set this to a positive scalar to have the same value for all motors, or a list that is the same length as
-    # the number of motors in your follower arms.
+    # `max_relative_target`限制相对位置目标向量的幅度，出于安全目的。
+    # 设置为正标量以对所有电机使用相同的值，或设置为与跟随臂电机数量相同长度的列表。
     max_relative_target: int | None = None
 
     leader_arms: dict[str, MotorsBusConfig] = field(
         default_factory=lambda: {
             "main": DynamixelMotorsBusConfig(
-                port="/dev/tty.usbmodem585A0085511", <-- UPDATE HERE
+                port="/dev/tty.usbmodem585A0085511", <-- 在此更新
                 motors={
-                    # name: (index, model)
+                    # 名称: (索引, 型号)
                     "shoulder_pan": [1, "xl330-m077"],
                     "shoulder_lift": [2, "xl330-m077"],
                     "elbow_flex": [3, "xl330-m077"],
@@ -211,9 +210,9 @@ class KochRobotConfig(ManipulatorRobotConfig):
     follower_arms: dict[str, MotorsBusConfig] = field(
         default_factory=lambda: {
             "main": DynamixelMotorsBusConfig(
-                port="/dev/tty.usbmodem585A0076891", <-- UPDATE HERE
+                port="/dev/tty.usbmodem585A0076891", <-- 在此更新
                 motors={
-                    # name: (index, model)
+                    # 名称: (索引, 型号)
                     "shoulder_pan": [1, "xl430-w250"],
                     "shoulder_lift": [2, "xl430-w250"],
                     "elbow_flex": [3, "xl330-m288"],
@@ -226,18 +225,18 @@ class KochRobotConfig(ManipulatorRobotConfig):
     )
 ```
 
-**Connect and Configure your Motors**
+**连接和配置您的电机**
 
-Before you can start using your motors, you'll need to configure them to ensure proper communication. When you first connect the motors, the [`DynamixelMotorsBus`](../lerobot/common/robot_devices/motors/dynamixel.py) automatically detects any mismatch between the current motor indices (factory set to `1`) and the specified indices (e.g., `1, 2, 3, 4, 5, 6`). This triggers a configuration procedure that requires you to unplug the power cord and motors, then reconnect each motor sequentially, starting from the one closest to the bus.
+在开始使用电机之前，您需要配置它们以确保正确通信。当您首次连接电机时，[`DynamixelMotorsBus`](../lerobot/common/robot_devices/motors/dynamixel.py)会自动检测当前电机索引（出厂设置为`1`）与指定索引（例如`1, 2, 3, 4, 5, 6`）之间的任何不匹配。这会触发配置程序，要求您拔掉电源线和电机，然后从最靠近总线的电机开始依次重新连接每个电机。
 
-For a visual guide, refer to the [video tutorial of the configuration procedure](https://youtu.be/U78QQ9wCdpY).
+有关配置程序的可视化指南，请参考[配置程序视频教程](https://youtu.be/U78QQ9wCdpY)。
 
-To connect and configure the leader arm, run the following code in the same Python interactive session as earlier in the tutorial:
+要连接和配置引导臂，请在与本教程前面相同的Python交互式会话中运行以下代码：
 ```python
 leader_arm.connect()
 ```
 
-When you connect the leader arm for the first time, you might see an output similar to this:
+当您第一次连接引导臂时，您可能会看到类似这样的输出：
 ```
 Read failed due to communication error on port /dev/tty.usbmodem575E0032081 for group_key ID_shoulder_pan_shoulder_lift_elbow_flex_wrist_flex_wrist_roll_gripper: [TxRxResult] There is no status packet!
 
@@ -256,46 +255,46 @@ Press Enter to continue...
 Setting expected motor indices: [1, 2, 3, 4, 5, 6]
 ```
 
-Once the leader arm is configured, repeat the process for the follower arm by running:
+配置好引导臂后，通过运行以下命令为跟随臂重复此过程：
 ```python
 follower_arm.connect()
 ```
 
-Congratulations! Both arms are now properly configured and connected. You won't need to go through the configuration procedure again in the future.
+恭喜！两个臂现在都已正确配置和连接。将来您不需要再次进行配置程序。
 
-**Troubleshooting**:
+**故障排除**：
 
-If the configuration process fails, you may need to do the configuration process via the Dynamixel Wizard.
+如果配置过程失败，您可能需要通过Dynamixel Wizard进行配置。
 
-Known failure modes:
-- Calling `arm.connect()` raises `OSError: No motor found, but one new motor expected. Verify power cord is plugged in and retry` on Ubuntu 22.
+已知故障模式：
+- 调用`arm.connect()`在Ubuntu 22上引发`OSError: No motor found, but one new motor expected. Verify power cord is plugged in and retry`。
 
-Steps:
-1. Visit https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_wizard2/#connect-dynamixel.
-2. Follow the software installation instructions in section 3 of the web page.
-3. Launch the software.
-4. Configure the device scanning options in the menu under `Tools` > `Options` > `Scan`. Check only Protocol 2.0, select only the USB port identifier of interest, select all baudrates, set the ID range to `[0, 10]`. _While this step was not strictly necessary, it greatly speeds up scanning_.
-5. For each motor in turn:
-    - Disconnect the power to the driver board.
-    - Connect **only** the motor of interest to the driver board, making sure to disconnect it from any other motors.
-    - Reconnect the power to the driver board.
-    - From the software menu select `Device` > `Scan` and let the scan run. A device should appear.
-    - If the device has an asterisk (*) near it, it means the firmware is indeed outdated. From the software menu, select `Tools` > `Firmware Update`. Follow the prompts.
-    - The main panel should have table with various parameters of the device (refer to the web page, section 5). Select the row with `ID`, and then set the desired ID on the bottom right panel by selecting and clicking `Save`.
-    - Just like you did with the ID, also set the `Baud Rate` to 1 Mbps.
-6. Check everything has been done right:
-   - Rewire the arms in their final configuration and power both of them.
-   - Scan for devices. All 12 motors should appear.
-   - Select the motors one by one and move the arm. Check that the graphical indicator near the top right shows the movement.
+步骤：
+1. 访问https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_wizard2/#connect-dynamixel。
+2. 按照网页第3部分的软件安装说明进行操作。
+3. 启动软件。
+4. 在`Tools` > `Options` > `Scan`菜单下配置设备扫描选项。仅选中协议2.0，仅选择感兴趣的USB端口标识符，选择所有波特率，将ID范围设置为`[0, 10]`。_虽然此步骤并非严格必要，但它极大地加快了扫描速度_。
+5. 对于每个电机依次：
+  - 断开驱动板的电源。
+  - 将**仅**要配置的电机连接到驱动板，确保将其与任何其他电机断开连接。
+  - 重新连接驱动板的电源。
+  - 从软件菜单中选择`Device` > `Scan`并让扫描运行。应该会出现一个设备。
+  - 如果设备旁边有星号(*)，表示固件确实已过期。从软件菜单中，选择`Tools` > `Firmware Update`。按照提示操作。
+  - 主面板应该有一个带有设备各种参数的表格（参考网页第5部分）。选择带有`ID`的行，然后通过在右下角面板上选择并单击`Save`来设置所需的ID。
+  - 就像您对ID所做的那样，也将`Baud Rate`设置为1 Mbps。
+6. 检查所有操作是否正确：
+   - 按最终配置重新接线臂并给两者供电。
+   - 扫描设备。所有12个电机都应该出现。
+   - 逐个选择电机并移动手臂。检查右上角附近的图形指示器是否显示移动。
 
-** There is a common issue with the Dynamixel XL430-W250 motors where the motors become undiscoverable after upgrading their firmware from Mac and Windows Dynamixel Wizard2 applications.  When this occurs, it is required to do a firmware recovery (Select `DYNAMIXEL Firmware Recovery` and follow the prompts).   There are two known workarounds to conduct this firmware reset:
-  1) Install the Dynamixel Wizard on a linux machine and complete the firmware recovery
-  2) Use the Dynamixel U2D2 in order to perform the reset with Windows or Mac.  This U2D2 can be purchased [here](https://www.robotis.us/u2d2/).
-  For either solution, open DYNAMIXEL Wizard 2.0 and select the appropriate port. You will likely be unable to see the motor in the GUI at this time. Select `Firmware Recovery`, carefully choose the correct model, and wait for the process to complete. Finally, re-scan to confirm the firmware recovery was successful.
+** Dynamixel XL430-W250电机有一个常见问题，在从Mac和Windows Dynamixel Wizard2应用程序升级固件后，电机变得无法被发现。当这种情况发生时，需要进行固件恢复（选择`DYNAMIXEL Firmware Recovery`并按照提示操作）。有两种已知的解决方法可以进行此固件重置：
+  1) 在Linux机器上安装Dynamixel Wizard并完成固件恢复
+  2) 使用Dynamixel U2D2在Windows或Mac上执行重置。此U2D2可以在[这里](https://www.robotis.us/u2d2/)购买。
+  对于任一解决方案，打开DYNAMIXEL Wizard 2.0并选择适当的端口。此时您可能无法在GUI中看到电机。选择`Firmware Recovery`，仔细选择正确的型号，并等待过程完成。最后，重新扫描以确认固件恢复成功。
 
-**Read and Write with DynamixelMotorsBus**
+**使用DynamixelMotorsBus读写**
 
-To get familiar with how `DynamixelMotorsBus` communicates with the motors, you can start by reading data from them. Copy past this code in the same interactive python session:
+要熟悉`DynamixelMotorsBus`如何与电机通信，您可以先从读取数据开始。在同一交互式Python会话中复制粘贴此代码：
 ```python
 leader_pos = leader_arm.read("Present_Position")
 follower_pos = follower_arm.read("Present_Position")
@@ -303,114 +302,114 @@ print(leader_pos)
 print(follower_pos)
 ```
 
-Expected output might look like:
+预期输出可能如下所示：
 ```
 array([2054,  523, 3071, 1831, 3049, 2441], dtype=int32)
 array([2003, 1601,   56, 2152, 3101, 2283], dtype=int32)
 ```
 
-Try moving the arms to various positions and observe how the values change.
+尝试将手臂移动到各种位置，观察值如何变化。
 
-Now let's try to enable torque in the follower arm by copy pasting this code:
+现在让我们尝试通过复制粘贴此代码来启用跟随臂的扭矩：
 ```python
 from lerobot.common.robot_devices.motors.dynamixel import TorqueMode
 
 follower_arm.write("Torque_Enable", TorqueMode.ENABLED.value)
 ```
 
-With torque enabled, the follower arm will be locked in its current position. Do not attempt to manually move the arm while torque is enabled, as this could damage the motors.
+扭矩启用后，跟随臂将锁定在当前位置。在扭矩启用时不要尝试手动移动手臂，因为这可能会损坏电机。
 
-Now, to get more familiar with reading and writing, let's move the arm programmatically copy pasting the following example code:
+现在，为了更熟悉读写，让我们通过复制粘贴以下示例代码以编程方式移动手臂：
 ```python
-# Get the current position
+# 获取当前位置
 position = follower_arm.read("Present_Position")
 
-# Update first motor (shoulder_pan) position by +10 steps
+# 将第一个电机（shoulder_pan）位置+10步
 position[0] += 10
 follower_arm.write("Goal_Position", position)
 
-# Update all motors position by -30 steps
+# 所有电机位置-30步
 position -= 30
 follower_arm.write("Goal_Position", position)
 
-# Update gripper by +30 steps
+# 夹持器+30步
 position[-1] += 30
 follower_arm.write("Goal_Position", position[-1], "gripper")
 ```
 
-When you're done playing, you can try to disable the torque, but make sure you hold your robot so that it doesn't fall:
+当您完成实验后，可以尝试禁用扭矩，但确保握住机器人以防止其跌落：
 ```python
 follower_arm.write("Torque_Enable", TorqueMode.DISABLED.value)
 ```
 
-Finally, disconnect the arms:
+最后，断开手臂连接：
 ```python
 leader_arm.disconnect()
 follower_arm.disconnect()
 ```
 
-Alternatively, you can unplug the power cord, which will automatically disable torque and disconnect the motors.
+或者，您可以拔掉电源线，这将自动禁用扭矩并断开电机连接。
 
-*/!\ Warning*: These motors tend to overheat, especially under torque or if left plugged in for too long. Unplug after use.
+*/!\ 警告*：这些电机容易过热，尤其是在扭矩启用或长时间插电的情况下。使用后请拔掉电源。
 
-### b. Teleoperate your Koch v1.1 with ManipulatorRobot
+### b. 使用ManipulatorRobot远程操作Koch v1.1
 
-**Instantiate the ManipulatorRobot**
+**实例化ManipulatorRobot**
 
-Before you can teleoperate your robot, you need to instantiate the  [`ManipulatorRobot`](../lerobot/common/robot_devices/robots/manipulator.py) using the previously defined `leader_config` and `follower_config`.
+在远程操作机器人之前，您需要使用先前定义的`leader_config`和`follower_config`来实例化[`ManipulatorRobot`](../lerobot/common/robot_devices/robots/manipulator.py)。
 
-For the Koch v1.1 robot, we only have one leader, so we refer to it as `"main"` and define it as `leader_arms={"main": leader_config}`. We do the same for the follower arm. For other robots (like the Aloha), which may have two pairs of leader and follower arms, you would define them like this: `leader_arms={"left": left_leader_config, "right": right_leader_config},`. Same thing for the follower arms.
+对于Koch v1.1机器人，我们只有一个引导臂，所以我们将其称为`"main"`并定义为`leader_arms={"main": leader_config}`。我们对跟随臂做同样的操作。对于其他机器人（如Aloha），可能有两对引导和跟随臂，您可以这样定义：`leader_arms={"left": left_leader_config, "right": right_leader_config}`。跟随臂也是如此。
 
 
-Run the following code to instantiate your manipulator robot:
+运行以下代码来实例化您的机械手机器人：
 ```python
 from lerobot.common.robot_devices.robots.configs import KochRobotConfig
 from lerobot.common.robot_devices.robots.manipulator import ManipulatorRobot
 
 robot_config = KochRobotConfig(
-    leader_arms={"main": leader_config},
-    follower_arms={"main": follower_config},
-    cameras={},  # We don't use any camera for now
+  leader_arms={"main": leader_config},
+  follower_arms={"main": follower_config},
+  cameras={},  # 我们现在不使用任何相机
 )
 robot = ManipulatorRobot(robot_config)
 ```
 
-The `KochRobotConfig` is used to set the associated settings and calibration process. For instance, we activate the torque of the gripper of the leader Koch v1.1 arm and position it at a 40 degree angle to use it as a trigger.
+`KochRobotConfig`用于设置相关设置和校准过程。例如，我们激活了Koch v1.1引导臂的夹持器的扭矩，并将其定位在40度角以用作触发器。
 
-For the [Aloha bimanual robot](https://aloha-2.github.io), we would use `AlohaRobotConfig` to set different settings such as a secondary ID for shadow joints (shoulder, elbow). Specific to Aloha, LeRobot comes with default calibration files stored in in `.cache/calibration/aloha_default`. Assuming the motors have been properly assembled, no manual calibration step is expected for Aloha.
+对于[Aloha双臂机器人](https://aloha-2.github.io)，我们会使用`AlohaRobotConfig`来设置不同的设置，如影子关节（肩部、肘部）的次要ID。特定于Aloha，LeRobot附带存储在`.cache/calibration/aloha_default`中的默认校准文件。假设电机已正确组装，预计Aloha不需要手动校准步骤。
 
-**Calibrate and Connect the ManipulatorRobot**
+**校准并连接ManipulatorRobot**
 
-Next, you'll need to calibrate your Koch robot to ensure that the leader and follower arms have the same position values when they are in the same physical position. This calibration is essential because it allows a neural network trained on one Koch robot to work on another.
+接下来，您需要校准Koch机器人，以确保当引导臂和跟随臂处于相同物理位置时，它们具有相同的位置值。这种校准至关重要，因为它允许在一个Koch机器人上训练的神经网络可以在另一个上工作。
 
-When you connect your robot for the first time, the [`ManipulatorRobot`](../lerobot/common/robot_devices/robots/manipulator.py) will detect if the calibration file is missing and trigger the calibration procedure. During this process, you will be guided to move each arm to three different positions.
+当您首次连接机器人时，[`ManipulatorRobot`](../lerobot/common/robot_devices/robots/manipulator.py)将检测是否缺少校准文件并触发校准程序。在此过程中，您将被引导将每个臂移动到三个不同的位置。
 
-Here are the positions you'll move the follower arm to:
+以下是您将移动跟随臂到的位置：
 
-| 1. Zero position                                                                                                                                                  | 2. Rotated position                                                                                                                                                        | 3. Rest position                                                                                                                                                  |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <img src="../media/koch/follower_zero.webp?raw=true" alt="Koch v1.1 follower arm zero position" title="Koch v1.1 follower arm zero position" style="width:100%;"> | <img src="../media/koch/follower_rotated.webp?raw=true" alt="Koch v1.1 follower arm rotated position" title="Koch v1.1 follower arm rotated position" style="width:100%;"> | <img src="../media/koch/follower_rest.webp?raw=true" alt="Koch v1.1 follower arm rest position" title="Koch v1.1 follower arm rest position" style="width:100%;"> |
+| 1. 零位置                                                                                                                                              | 2. 旋转位置                                                                                                                                               | 3. 休息位置                                                                                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <img src="../media/koch/follower_zero.webp?raw=true" alt="Koch v1.1跟随臂零位置" title="Koch v1.1跟随臂零位置" style="width:100%;"> | <img src="../media/koch/follower_rotated.webp?raw=true" alt="Koch v1.1跟随臂旋转位置" title="Koch v1.1跟随臂旋转位置" style="width:100%;"> | <img src="../media/koch/follower_rest.webp?raw=true" alt="Koch v1.1跟随臂休息位置" title="Koch v1.1跟随臂休息位置" style="width:100%;"> |
 
-And here are the corresponding positions for the leader arm:
+以下是引导臂对应的位置：
 
-| 1. Zero position                                                                                                                                            | 2. Rotated position                                                                                                                                                  | 3. Rest position                                                                                                                                            |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| <img src="../media/koch/leader_zero.webp?raw=true" alt="Koch v1.1 leader arm zero position" title="Koch v1.1 leader arm zero position" style="width:100%;"> | <img src="../media/koch/leader_rotated.webp?raw=true" alt="Koch v1.1 leader arm rotated position" title="Koch v1.1 leader arm rotated position" style="width:100%;"> | <img src="../media/koch/leader_rest.webp?raw=true" alt="Koch v1.1 leader arm rest position" title="Koch v1.1 leader arm rest position" style="width:100%;"> |
+| 1. 零位置                                                                                                                                         | 2. 旋转位置                                                                                                                                            | 3. 休息位置                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <img src="../media/koch/leader_zero.webp?raw=true" alt="Koch v1.1引导臂零位置" title="Koch v1.1引导臂零位置" style="width:100%;"> | <img src="../media/koch/leader_rotated.webp?raw=true" alt="Koch v1.1引导臂旋转位置" title="Koch v1.1引导臂旋转位置" style="width:100%;"> | <img src="../media/koch/leader_rest.webp?raw=true" alt="Koch v1.1引导臂休息位置" title="Koch v1.1引导臂休息位置" style="width:100%;"> |
 
-You can watch a [video tutorial of the calibration procedure](https://youtu.be/8drnU9uRY24) for more details.
+您可以查看[校准程序的视频教程](https://youtu.be/8drnU9uRY24)了解更多详情。
 
-During calibration, we count the number of full 360-degree rotations your motors have made since they were first used. That's why we ask yo to move to this arbitrary "zero" position. We don't actually "set" the zero position, so you don't need to be accurate. After calculating these "offsets" to shift the motor values around 0, we need to assess the rotation direction of each motor, which might differ. That's why we ask you to rotate all motors to roughly 90 degrees, to measure if the values changed negatively or positively.
+在校准过程中，我们会计算您的电机自首次使用以来完成的360度全旋转次数。这就是为什么我们要求您移动到这个任意的"零"位置。我们并不真正"设置"零位置，所以您不需要精确。计算这些"偏移量"以将电机值移到0周围后，我们需要评估每个电机的旋转方向，这可能有所不同。这就是为什么我们要求您将所有电机旋转到大约90度，以测量值是否呈负向或正向变化。
 
-Finally, the rest position ensures that the follower and leader arms are roughly aligned after calibration, preventing sudden movements that could damage the motors when starting teleoperation.
+最后，休息位置确保在校准后跟随臂和引导臂大致对齐，防止在开始远程操作时出现可能损坏电机的突然运动。
 
-Importantly, once calibrated, all Koch robots will move to the same positions (e.g. zero and rotated position) when commanded.
+重要的是，一旦校准，所有Koch机器人在接收到命令时都会移动到相同的位置（例如零位置和旋转位置）。
 
-Run the following code to calibrate and connect your robot:
+运行以下代码来校准并连接您的机器人：
 ```python
 robot.connect()
 ```
 
-The output will look like this:
+输出将如下所示：
 ```
 Connecting main follower arm
 Connecting main leader arm
@@ -436,11 +435,11 @@ Move arm to rest position
 Calibration is done! Saving calibration file '.cache/calibration/koch/main_leader.json'
 ```
 
-*Verifying Calibration*
+*验证校准*
 
-Once calibration is complete, you can check the positions of the leader and follower arms to ensure they match. If the calibration was successful, the positions should be very similar.
+校准完成后，您可以检查引导臂和跟随臂的位置以确保它们匹配。如果校准成功，位置应该非常相似。
 
-Run this code to get the positions in degrees:
+运行此代码以获取度数表示的位置：
 ```python
 leader_pos = robot.leader_arms["main"].read("Present_Position")
 follower_pos = robot.follower_arms["main"].read("Present_Position")
@@ -449,43 +448,43 @@ print(leader_pos)
 print(follower_pos)
 ```
 
-Example output:
+示例输出：
 ```
 array([-0.43945312, 133.94531, 179.82422, -18.984375, -1.9335938, 34.541016], dtype=float32)
 array([-0.58723712, 131.72314, 174.98743, -16.872612, 0.786213, 35.271973], dtype=float32)
 ```
 
-These values are in degrees, which makes them easier to interpret and debug. The zero position used during calibration should roughly correspond to 0 degrees for each motor, and the rotated position should roughly correspond to 90 degrees for each motor.
+这些值以度为单位，使它们更易于解释和调试。校准过程中使用的零位置大致对应于每个电机的0度，旋转位置大致对应于每个电机的90度。
 
-**Teleoperate your Koch v1.1**
+**远程操作Koch v1.1**
 
-You can easily teleoperate your robot by reading the positions from the leader arm and sending them as goal positions to the follower arm.
+您可以通过读取引导臂的位置并将其作为目标位置发送给跟随臂，轻松远程操作您的机器人。
 
-To teleoperate your robot for 30 seconds at a frequency of approximately 200Hz, run the following code:
+要以大约200Hz的频率远程操作机器人30秒，请运行以下代码：
 ```python
 import tqdm
 seconds = 30
 frequency = 200
 for _ in tqdm.tqdm(range(seconds*frequency)):
-    leader_pos = robot.leader_arms["main"].read("Present_Position")
-    robot.follower_arms["main"].write("Goal_Position", leader_pos)
+  leader_pos = robot.leader_arms["main"].read("Present_Position")
+  robot.follower_arms["main"].write("Goal_Position", leader_pos)
 ```
 
-*Using `teleop_step` for Teleoperation*
+*使用`teleop_step`进行远程操作*
 
-Alternatively, you can teleoperate the robot using the `teleop_step` method from [`ManipulatorRobot`](../lerobot/common/robot_devices/robots/manipulator.py).
+或者，您可以使用[`ManipulatorRobot`](../lerobot/common/robot_devices/robots/manipulator.py)中的`teleop_step`方法远程操作机器人。
 
-Run this code to teleoperate:
+运行此代码进行远程操作：
 ```python
 for _ in tqdm.tqdm(range(seconds*frequency)):
-    robot.teleop_step()
+  robot.teleop_step()
 ```
 
-*Recording data during Teleoperation*
+*在远程操作过程中记录数据*
 
-Teleoperation is particularly useful for recording data. You can use the `teleop_step(record_data=True)` to returns both the follower arm's position as `"observation.state"` and the leader arm's position as `"action"`. This function also converts the numpy arrays into PyTorch tensors. If you're working with a robot that has two leader and two follower arms (like the Aloha), the positions are concatenated.
+远程操作对于记录数据特别有用。您可以使用`teleop_step(record_data=True)`返回跟随臂的位置作为`"observation.state"`和引导臂的位置作为`"action"`。此函数还将numpy数组转换为PyTorch张量。如果您正在使用具有两个引导臂和两个跟随臂的机器人（如Aloha），则位置会被连接起来。
 
-Run the following code to see how slowly moving the leader arm affects the observation and action:
+运行以下代码，查看慢慢移动引导臂如何影响观察和动作：
 ```python
 leader_pos = robot.leader_arms["main"].read("Present_Position")
 follower_pos = robot.follower_arms["main"].read("Present_Position")
@@ -497,248 +496,24 @@ print(leader_pos)
 print(action)
 ```
 
-Expected output:
-```
-array([7.8223, 131.1328, 165.5859, -23.4668, -0.9668, 32.4316], dtype=float32)
-{'observation.state': tensor([7.8223, 131.1328, 165.5859, -23.4668, -0.9668, 32.4316])}
-array([3.4277, 134.1211, 179.8242, -18.5449, -1.5820, 34.7168], dtype=float32)
-{'action': tensor([3.4277, 134.1211, 179.8242, -18.5449, -1.5820, 34.7168])}
-```
+*异步帧录制*
 
-*Asynchronous Frame Recording*
+此外，`teleop_step`可以异步记录来自多个相机的帧，并将它们作为`"observation.images.CAMERA_NAME"`包含在观察字典中。这个特性将在下一部分详细介绍。
 
-Additionally, `teleop_step` can asynchronously record frames from multiple cameras and include them in the observation dictionary as `"observation.images.CAMERA_NAME"`. This feature will be covered in more detail in the next section.
+*断开机器人连接*
 
-*Disconnecting the Robot*
-
-When you're finished, make sure to disconnect your robot by running:
+完成后，请务必通过运行以下命令断开机器人连接：
 ```python
 robot.disconnect()
 ```
 
-Alternatively, you can unplug the power cord, which will also disable torque.
+或者，您可以拔掉电源线，这也会禁用扭矩。
 
-*/!\ Warning*: These motors tend to overheat, especially under torque or if left plugged in for too long. Unplug after use.
+*/!\ 警告*：这些电机容易过热，尤其是在扭矩下或长时间插电的情况下。使用后请拔掉电源。
 
-### c. Add your cameras with OpenCVCamera
+根据您之前学习的内容，您现在可以轻松地记录一个包含单个回合状态和动作的数据集。您可以使用 `busy_wait` 来控制远程操作的速度，并以固定的 `fps`（每秒帧数）进行记录。
 
-**(Optional) Use your phone as camera on Linux**
-
-If you want to use your phone as a camera on Linux, follow these steps to set up a virtual camera
-
-1. *Install `v4l2loopback-dkms` and `v4l-utils`*. Those packages are required to create virtual camera devices (`v4l2loopback`) and verify their settings with the `v4l2-ctl` utility from `v4l-utils`. Install them using:
-```python
-sudo apt install v4l2loopback-dkms v4l-utils
-```
-2. *Install [DroidCam](https://droidcam.app) on your phone*. This app is available for both iOS and Android.
-3. *Install [OBS Studio](https://obsproject.com)*. This software will help you manage the camera feed. Install it using [Flatpak](https://flatpak.org):
-```python
-flatpak install flathub com.obsproject.Studio
-```
-4. *Install the DroidCam OBS plugin*. This plugin integrates DroidCam with OBS Studio. Install it with:
-```python
-flatpak install flathub com.obsproject.Studio.Plugin.DroidCam
-```
-5. *Start OBS Studio*. Launch with:
-```python
-flatpak run com.obsproject.Studio
-```
-6. *Add your phone as a source*. Follow the instructions [here](https://droidcam.app/obs/usage). Be sure to set the resolution to `640x480`.
-7. *Adjust resolution settings*. In OBS Studio, go to `File > Settings > Video`. Change the `Base(Canvas) Resolution` and the `Output(Scaled) Resolution` to `640x480` by manually typing it in.
-8. *Start virtual camera*. In OBS Studio, follow the instructions [here](https://obsproject.com/kb/virtual-camera-guide).
-9. *Verify the virtual camera setup*. Use `v4l2-ctl` to list the devices:
-```python
-v4l2-ctl --list-devices
-```
-You should see an entry like:
-```
-VirtualCam (platform:v4l2loopback-000):
-/dev/video1
-```
-10. *Check the camera resolution*. Use `v4l2-ctl` to ensure that the virtual camera output resolution is `640x480`. Change `/dev/video1` to the port of your virtual camera from the output of `v4l2-ctl --list-devices`.
-```python
-v4l2-ctl -d /dev/video1 --get-fmt-video
-```
-You should see an entry like:
-```
->>> Format Video Capture:
->>>	Width/Height      : 640/480
->>>	Pixel Format      : 'YUYV' (YUYV 4:2:2)
-```
-
-Troubleshooting: If the resolution is not correct you will have to delete the Virtual Camera port and try again as it cannot be changed.
-
-If everything is set up correctly, you can proceed with the rest of the tutorial.
-
-**(Optional) Use your iPhone as a camera on MacOS**
-
-To use your iPhone as a camera on macOS, enable the Continuity Camera feature:
-- Ensure your Mac is running macOS 13 or later, and your iPhone is on iOS 16 or later.
-- Sign in both devices with the same Apple ID.
-- Connect your devices with a USB cable or turn on Wi-Fi and Bluetooth for a wireless connection.
-
-For more details, visit [Apple support](https://support.apple.com/en-gb/guide/mac-help/mchl77879b8a/mac).
-
-Your iPhone should be detected automatically when running the camera setup script in the next section.
-
-**Instantiate an OpenCVCamera**
-
-The [`OpenCVCamera`](../lerobot/common/robot_devices/cameras/opencv.py) class allows you to efficiently record frames from most cameras using the [`opencv2`](https://docs.opencv.org) library.  For more details on compatibility, see [Video I/O with OpenCV Overview](https://docs.opencv.org/4.x/d0/da7/videoio_overview.html).
-
-To instantiate an [`OpenCVCamera`](../lerobot/common/robot_devices/cameras/opencv.py), you need a camera index (e.g. `OpenCVCamera(camera_index=0)`). When you only have one camera like a webcam of a laptop, the camera index is usually `0` but it might differ, and the camera index might change if you reboot your computer or re-plug your camera. This behavior depends on your operating system.
-
-To find the camera indices, run the following utility script, which will save a few frames from each detected camera:
-```bash
-python lerobot/common/robot_devices/cameras/opencv.py \
-    --images-dir outputs/images_from_opencv_cameras
-```
-
-The output will look something like this if you have two cameras connected:
-```
-Mac or Windows detected. Finding available camera indices through scanning all indices from 0 to 60
-[...]
-Camera found at index 0
-Camera found at index 1
-[...]
-Connecting cameras
-OpenCVCamera(0, fps=30.0, width=1920.0, height=1080.0, color_mode=rgb)
-OpenCVCamera(1, fps=24.0, width=1920.0, height=1080.0, color_mode=rgb)
-Saving images to outputs/images_from_opencv_cameras
-Frame: 0000	Latency (ms): 39.52
-[...]
-Frame: 0046	Latency (ms): 40.07
-Images have been saved to outputs/images_from_opencv_cameras
-```
-
-Check the saved images in `outputs/images_from_opencv_cameras` to identify which camera index corresponds to which physical camera (e.g. `0` for `camera_00` or `1` for `camera_01`):
-```
-camera_00_frame_000000.png
-[...]
-camera_00_frame_000047.png
-camera_01_frame_000000.png
-[...]
-camera_01_frame_000047.png
-```
-
-Note: Some cameras may take a few seconds to warm up, and the first frame might be black or green.
-
-Finally, run this code to instantiate and connectyour camera:
-```python
-from lerobot.common.robot_devices.cameras.configs import OpenCVCameraConfig
-from lerobot.common.robot_devices.cameras.opencv import OpenCVCamera
-
-config = OpenCVCameraConfig(camera_index=0)
-camera = OpenCVCamera(config)
-camera.connect()
-color_image = camera.read()
-
-print(color_image.shape)
-print(color_image.dtype)
-```
-
-Expected output for a laptop camera on MacBookPro:
-```
-(1080, 1920, 3)
-uint8
-```
-
-Or like this if you followed our tutorial to set a virtual camera:
-```
-(480, 640, 3)
-uint8
-```
-
-With certain camera, you can also specify additional parameters like frame rate, resolution, and color mode during instantiation. For instance:
-```python
-config = OpenCVCameraConfig(camera_index=0, fps=30, width=640, height=480)
-```
-
-If the provided arguments are not compatible with the camera, an exception will be raised.
-
-*Disconnecting the camera*
-
-When you're done using the camera, disconnect it by running:
-```python
-camera.disconnect()
-```
-
-**Instantiate your robot with cameras**
-
-Additionally, you can set up your robot to work with your cameras.
-
-Modify the following Python code with the appropriate camera names and configurations:
-```python
-robot = ManipulatorRobot(
-    KochRobotConfig(
-        leader_arms={"main": leader_arm},
-        follower_arms={"main": follower_arm},
-        calibration_dir=".cache/calibration/koch",
-        cameras={
-            "laptop": OpenCVCameraConfig(0, fps=30, width=640, height=480),
-            "phone": OpenCVCameraConfig(1, fps=30, width=640, height=480),
-        },
-    )
-)
-robot.connect()
-```
-
-As a result, `teleop_step(record_data=True` will return a frame for each camera following the pytorch "channel first" convention but we keep images in `uint8` with pixels in range [0,255] to easily save them.
-
-Modify this code with the names of your cameras and run it:
-```python
-observation, action = robot.teleop_step(record_data=True)
-print(observation["observation.images.laptop"].shape)
-print(observation["observation.images.phone"].shape)
-print(observation["observation.images.laptop"].min().item())
-print(observation["observation.images.laptop"].max().item())
-```
-
-The output should look like this:
-```
-torch.Size([3, 480, 640])
-torch.Size([3, 480, 640])
-0
-255
-```
-
-### d. Use `control_robot.py` and our `teleoperate` function
-
-Instead of manually running the python code in a terminal window, you can use [`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py) to instantiate your robot by providing the robot configurations via command line and control your robot with various modes as explained next.
-
-Try running this code to teleoperate your robot (if you dont have a camera, keep reading):
-```bash
-python lerobot/scripts/control_robot.py \
-  --robot.type=koch \
-  --control.type=teleoperate
-```
-
-You will see a lot of lines appearing like this one:
-```
-INFO 2024-08-10 11:15:03 ol_robot.py:209 dt: 5.12 (195.1hz) dtRlead: 4.93 (203.0hz) dtWfoll: 0.19 (5239.0hz)
-```
-
-It contains
-- `2024-08-10 11:15:03` which is the date and time of the call to the print function.
-- `ol_robot.py:209` which is the end of the file name and the line number where the print function is called  (`lerobot/scripts/control_robot.py` line `209`).
-- `dt: 5.12 (195.1hz)` which is the "delta time" or the number of milliseconds spent between the previous call to `robot.teleop_step()` and the current one, associated with the frequency (5.12 ms equals 195.1 Hz) ; note that you can control the maximum frequency by adding fps as argument such as `--fps 30`.
-- `dtRlead: 4.93 (203.0hz)` which is the number of milliseconds it took to read the position of the leader arm using `leader_arm.read("Present_Position")`.
-- `dtWfoll: 0.22 (4446.9hz)` which is the number of milliseconds it took to set a new goal position for the follower arm using `follower_arm.write("Goal_position", leader_pos)` ; note that writing is done asynchronously so it takes less time than reading.
-
-Importantly: If you don't have any camera, you can remove them dynamically with this [draccus](https://github.com/dlwh/draccus) syntax `--robot.cameras='{}'`:
-```bash
-python lerobot/scripts/control_robot.py \
-  --robot.type=koch \
-  --robot.cameras='{}' \
-  --control.type=teleoperate
-```
-
-We advise to create a new yaml file when the command becomes too long.
-
-## 3. Record your Dataset and Visualize it
-
-Using what you've learned previously, you can now easily record a dataset of states and actions for one episode. You can use `busy_wait` to control the speed of teleoperation and record at a fixed `fps` (frame per seconds).
-
-Try this code to record 30 seconds at 60 fps:
+尝试以下代码，以60 fps的速度记录30秒：
 ```python
 import time
 from lerobot.scripts.control_robot import busy_wait
@@ -749,57 +524,57 @@ fps = 60
 states = []
 actions = []
 for _ in range(record_time_s * fps):
-    start_time = time.perf_counter()
-    observation, action = robot.teleop_step(record_data=True)
+  start_time = time.perf_counter()
+  observation, action = robot.teleop_step(record_data=True)
 
-    states.append(observation["observation.state"])
-    actions.append(action["action"])
+  states.append(observation["observation.state"])
+  actions.append(action["action"])
 
-    dt_s = time.perf_counter() - start_time
-    busy_wait(1 / fps - dt_s)
+  dt_s = time.perf_counter() - start_time
+  busy_wait(1 / fps - dt_s)
 
-# Note that observation and action are available in RAM, but
-# you could potentially store them on disk with pickle/hdf5 or
-# our optimized format `LeRobotDataset`. More on this next.
+# 注意，观察和动作可在RAM中获取，但
+# 您可以使用pickle/hdf5或我们优化的格式
+# `LeRobotDataset`将它们存储在磁盘上。下面会详细介绍。
 ```
 
-Importantly, many utilities are still missing. For instance, if you have cameras, you will need to save the images on disk to not go out of RAM, and to do so in threads to not slow down communication with your robot. Also, you will need to store your data in a format optimized for training and web sharing like [`LeRobotDataset`](../lerobot/common/datasets/lerobot_dataset.py). More on this in the next section.
+重要的是，仍有许多实用工具尚未涵盖。例如，如果您有摄像头，您需要将图像保存到磁盘以避免内存不足，并在线程中进行以避免减慢与机器人的通信速度。此外，您需要将数据存储在为训练和网络共享而优化的格式中，如[`LeRobotDataset`](../lerobot/common/datasets/lerobot_dataset.py)。下一节将详细介绍这些内容。
 
-### a. Use the `record` function
+### a. 使用 `record` 函数
 
-You can use the `record` function from [`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py) to achieve efficient data recording. It encompasses many recording utilities:
-1. Frames from cameras are saved on disk in threads, and encoded into videos at the end of each episode recording.
-2. Video streams from cameras are displayed in window so that you can verify them.
-3. Data is stored with [`LeRobotDataset`](../lerobot/common/datasets/lerobot_dataset.py) format which is pushed to your Hugging Face page (unless `--control.push_to_hub=false` is provided).
-4. Checkpoints are done during recording, so if any issue occurs, you can resume recording by re-running the same command again with `--control.resume=true`. You will need to manually delete the dataset directory if you want to start recording from scratch.
-5. Set the flow of data recording using command line arguments:
-   - `--control.warmup_time_s=10` defines the number of seconds before starting data collection. It allows the robot devices to warmup and synchronize (10 seconds by default).
-   - `--control.episode_time_s=60` defines the number of seconds for data recording for each episode (60 seconds by default).
-   - `--control.reset_time_s=60` defines the number of seconds for resetting the environment after each episode (60 seconds by default).
-   - `--control.num_episodes=50` defines the number of episodes to record (50 by default).
-6. Control the flow during data recording using keyboard keys:
-   - Press right arrow `->` at any time during episode recording to early stop and go to resetting. Same during resetting, to early stop and to go to the next episode recording.
-   - Press left arrow `<-` at any time during episode recording or resetting to early stop, cancel the current episode, and re-record it.
-   - Press escape `ESC` at any time during episode recording to end the session early and go straight to video encoding and dataset uploading.
-7. Similarly to `teleoperate`, you can also use the command line to override anything.
+您可以使用[`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py)中的`record`函数来实现高效的数据记录。它包含许多记录实用工具：
+1. 摄像头的帧在线程中保存到磁盘，并在每个回合记录结束时编码为视频。
+2. 摄像头的视频流显示在窗口中，以便您可以验证它们。
+3. 数据使用[`LeRobotDataset`](../lerobot/common/datasets/lerobot_dataset.py)格式存储，并推送到您的Hugging Face页面（除非提供了`--control.push_to_hub=false`）。
+4. 在记录过程中进行检查点保存，因此如果出现任何问题，您可以通过再次运行相同的命令并加上`--control.resume=true`来恢复记录。如果您想从头开始记录，则需要手动删除数据集目录。
+5. 使用命令行参数设置数据记录流程：
+   - `--control.warmup_time_s=10` 定义在开始数据收集前的预热秒数。它允许机器人设备预热和同步（默认为10秒）。
+   - `--control.episode_time_s=60` 定义每个回合数据记录的秒数（默认为60秒）。
+   - `--control.reset_time_s=60` 定义每个回合后重置环境的秒数（默认为60秒）。
+   - `--control.num_episodes=50` 定义要记录的回合数量（默认为50）。
+6. 在数据记录过程中使用键盘按键控制流程：
+   - 在回合记录过程中任何时候按右箭头 `->` 可提前停止并进入重置阶段。在重置过程中同样可以提前停止并进入下一回合记录。
+   - 在回合记录或重置过程中任何时候按左箭头 `<-` 可提前停止，取消当前回合，并重新记录。
+   - 在回合记录过程中任何时候按Esc键 `ESC` 可提前结束会话并直接进入视频编码和数据集上传阶段。
+7. 与 `teleoperate` 类似，您也可以使用命令行覆盖任何设置。
 
-Before trying `record`, if you want to push your dataset to the hub, make sure you've logged in using a write-access token, which can be generated from the [Hugging Face settings](https://huggingface.co/settings/tokens):
+在尝试 `record` 之前，如果您想将数据集推送到hub，请确保您已使用具有写访问权限的令牌登录，该令牌可以从[Hugging Face设置](https://huggingface.co/settings/tokens)生成：
 ```bash
 huggingface-cli login --token ${HUGGINGFACE_TOKEN} --add-to-git-credential
 ```
-Also, store your Hugging Face repository name in a variable (e.g. `cadene` or `lerobot`). For instance, run this to use your Hugging Face user name as repository:
+同时，将您的Hugging Face仓库名称存储在一个变量中（例如 `cadene` 或 `lerobot`）。例如，运行以下命令使用您的Hugging Face用户名作为仓库：
 ```bash
 HF_USER=$(huggingface-cli whoami | head -n 1)
 echo $HF_USER
 ```
-If you don't want to push to hub, use `--control.push_to_hub=false`.
+如果您不想推送到hub，请使用 `--control.push_to_hub=false`。
 
-Now run this to record 2 episodes:
+现在运行以下命令记录2个回合：
 ```bash
 python lerobot/scripts/control_robot.py \
   --robot.type=koch \
   --control.type=record \
-  --control.single_task="Grasp a lego block and put it in the bin." \
+  --control.single_task="抓取一个乐高积木并将其放入箱中。" \
   --control.fps=30 \
   --control.repo_id=${HF_USER}/koch_test \
   --control.tags='["tutorial"]' \
@@ -810,63 +585,62 @@ python lerobot/scripts/control_robot.py \
   --control.push_to_hub=true
 ```
 
+这将把您的数据集本地写入 `~/.cache/huggingface/lerobot/{repo-id}`（例如 `data/cadene/koch_test`）并将其推送到hub上的 `https://huggingface.co/datasets/{HF_USER}/{repo-id}`。您的数据集将自动标记为 `LeRobot`，以便社区可以轻松找到它，您还可以添加自定义标签（在本例中为 `tutorial`）。
 
-This will write your dataset locally to `~/.cache/huggingface/lerobot/{repo-id}` (e.g. `data/cadene/koch_test`) and push it on the hub at `https://huggingface.co/datasets/{HF_USER}/{repo-id}`. Your dataset will be automatically tagged with `LeRobot` for the community to find it easily, and you can also add custom tags (in this case `tutorial` for example).
+您可以通过搜索 `LeRobot` 标签在hub上查找其他LeRobot数据集：https://huggingface.co/datasets?other=LeRobot
 
-You can look for other LeRobot datasets on the hub by searching for `LeRobot` tags: https://huggingface.co/datasets?other=LeRobot
-
-You will see a lot of lines appearing like this one:
+您将看到许多行出现，如下所示：
 ```
 INFO 2024-08-10 15:02:58 ol_robot.py:219 dt:33.34 (30.0hz) dtRlead: 5.06 (197.5hz) dtWfoll: 0.25 (3963.7hz) dtRfoll: 6.22 (160.7hz) dtRlaptop: 32.57 (30.7hz) dtRphone: 33.84 (29.5hz)
 ```
-It contains:
-- `2024-08-10 15:02:58` which is the date and time of the call to the print function,
-- `ol_robot.py:219` which is the end of the file name and the line number where the print function is called  (`lerobot/scripts/control_robot.py` line `219`).
-- `dt:33.34 (30.0hz)` which is the "delta time" or the number of milliseconds spent between the previous call to `robot.teleop_step(record_data=True)` and the current one, associated with the frequency (33.34 ms equals 30.0 Hz) ; note that we use `--fps 30` so we expect 30.0 Hz ; when a step takes more time, the line appears in yellow.
-- `dtRlead: 5.06 (197.5hz)` which is the delta time of reading the present position of the leader arm.
-- `dtWfoll: 0.25 (3963.7hz)` which is the delta time of writing the goal position on the follower arm ; writing is asynchronous so it takes less time than reading.
-- `dtRfoll: 6.22 (160.7hz)` which is the delta time of reading the present position on the follower arm.
-- `dtRlaptop:32.57 (30.7hz) ` which is the delta time of capturing an image from the laptop camera in the thread running asynchronously.
-- `dtRphone:33.84 (29.5hz)` which is the delta time of capturing an image from the phone camera in the thread running asynchronously.
+它包含：
+- `2024-08-10 15:02:58`，即调用print函数的日期和时间，
+- `ol_robot.py:219`，即调用print函数的文件名末尾和行号（`lerobot/scripts/control_robot.py` 第 `219` 行）。
+- `dt:33.34 (30.0hz)`，即前一次调用`robot.teleop_step(record_data=True)`与当前调用之间花费的"时间增量"或毫秒数，以及相关频率（33.34毫秒等于30.0 Hz）；注意我们使用 `--fps 30` 所以我们期望频率为30.0 Hz；当一个步骤花费更多时间时，该行会显示为黄色。
+- `dtRlead: 5.06 (197.5hz)`，即读取引导臂当前位置的时间增量。
+- `dtWfoll: 0.25 (3963.7hz)`，即在跟随臂上写入目标位置的时间增量；写入是异步的，所以比读取花费的时间更少。
+- `dtRfoll: 6.22 (160.7hz)`，即读取跟随臂当前位置的时间增量。
+- `dtRlaptop:32.57 (30.7hz)`，即在异步运行的线程中从笔记本电脑摄像头捕获图像的时间增量。
+- `dtRphone:33.84 (29.5hz)`，即在异步运行的线程中从手机摄像头捕获图像的时间增量。
 
-Troubleshooting:
-- On Linux, if the left and right arrow keys and escape key don't have any effect during data recording, make sure you've set the `$DISPLAY` environment variable. See [pynput limitations](https://pynput.readthedocs.io/en/latest/limitations.html#linux).
+故障排除：
+- 在Linux上，如果在数据记录过程中左右箭头键和Esc键没有任何效果，请确保您已设置`$DISPLAY`环境变量。参见[pynput限制](https://pynput.readthedocs.io/en/latest/limitations.html#linux)。
 
-At the end of data recording, your dataset will be uploaded on your Hugging Face page (e.g. https://huggingface.co/datasets/cadene/koch_test) that you can obtain by running:
+数据记录结束时，您的数据集将上传到您的Hugging Face页面（例如 https://huggingface.co/datasets/cadene/koch_test），您可以通过运行以下命令获取该页面：
 ```bash
 echo https://huggingface.co/datasets/${HF_USER}/koch_test
 ```
 
-### b. Advice for recording dataset
+### b. 记录数据集的建议
 
-Once you're comfortable with data recording, it's time to create a larger dataset for training. A good starting task is grasping an object at different locations and placing it in a bin. We suggest recording at least 50 episodes, with 10 episodes per location. Keep the cameras fixed and maintain consistent grasping behavior throughout the recordings.
+一旦您熟悉了数据记录，就可以创建更大的数据集用于训练了。一个良好的起始任务是在不同位置抓取物体并将其放入箱中。我们建议至少记录50个回合，每个位置10个回合。保持摄像头固定，并在整个记录过程中保持一致的抓取行为。
 
-In the following sections, you’ll train your neural network. After achieving reliable grasping performance, you can start introducing more variations during data collection, such as additional grasp locations, different grasping techniques, and altering camera positions.
+在接下来的部分中，您将训练您的神经网络。在实现可靠的抓取性能后，您可以开始在数据收集过程中引入更多变化，如额外的抓取位置、不同的抓取技术以及改变摄像头位置。
 
-Avoid adding too much variation too quickly, as it may hinder your results.
+避免过快地添加太多变化，因为这可能会阻碍您的结果。
 
-In the coming months, we plan to release a foundational model for robotics. We anticipate that fine-tuning this model will enhance generalization, reducing the need for strict consistency during data collection.
+在未来几个月内，我们计划发布一个用于机器人学习的基础模型。我们预计微调这个模型将增强泛化能力，减少在数据收集过程中对严格一致性的需求。
 
-### c. Visualize all episodes
+### c. 可视化所有回合
 
-You can visualize your dataset by running:
+您可以通过运行以下命令可视化您的数据集：
 ```bash
 python lerobot/scripts/visualize_dataset_html.py \
   --repo-id ${HF_USER}/koch_test
 ```
 
-Note: You might need to add `--local-files-only 1` if your dataset was not uploaded to hugging face hub.
+注意：如果您的数据集未上传到hugging face hub，您可能需要添加 `--local-files-only 1`。
 
-This will launch a local web server that looks like this:
+这将启动一个本地web服务器，如下所示：
 <div style="text-align:center;">
-  <img src="../media/tutorial/visualize_dataset_html.webp?raw=true" alt="Koch v1.1 leader and follower arms" title="Koch v1.1 leader and follower arms" width="100%">
+  <img src="../media/tutorial/visualize_dataset_html.webp?raw=true" alt="Koch v1.1引导臂和跟随臂" title="Koch v1.1引导臂和跟随臂" width="100%">
 </div>
 
-### d. Replay episode on your robot with the `replay` function
+### d. 使用 `replay` 函数在机器人上重放回合
 
-A useful feature of [`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py) is the `replay` function, which allows to replay on your robot any episode that you've recorded or episodes from any dataset out there. This function helps you test the repeatability of your robot's actions and assess transferability across robots of the same model.
+[`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py)的一个有用功能是 `replay` 函数，它允许在您的机器人上重放您已记录的任何回合或来自其他数据集的回合。此功能帮助您测试机器人动作的可重复性，并评估相同型号机器人之间的可迁移性。
 
-To replay the first episode of the dataset you just recorded, run the following command:
+要重放您刚记录的数据集的第一个回合，请运行以下命令：
 ```bash
 python lerobot/scripts/control_robot.py \
   --robot.type=koch \
@@ -876,13 +650,13 @@ python lerobot/scripts/control_robot.py \
   --control.episode=0
 ```
 
-Your robot should replicate movements similar to those you recorded. For example, check out [this video](https://x.com/RemiCadene/status/1793654950905680090) where we use `replay` on a Aloha robot from [Trossen Robotics](https://www.trossenrobotics.com).
+您的机器人应该复制类似于您记录的动作。例如，查看[这个视频](https://x.com/RemiCadene/status/1793654950905680090)，我们在来自[Trossen Robotics](https://www.trossenrobotics.com)的Aloha机器人上使用`replay`。
 
-## 4. Train a policy on your data
+## 4. 基于数据训练策略
 
-### a. Use the `train` script
+### a. 使用 `train` 脚本
 
-To train a policy to control your robot, use the [`python lerobot/scripts/train.py`](../lerobot/scripts/train.py) script. A few arguments are required. Here is an example command:
+要训练用于控制机器人的策略，请使用[`python lerobot/scripts/train.py`](../lerobot/scripts/train.py)脚本。需要几个参数。以下是示例命令：
 ```bash
 python lerobot/scripts/train.py \
   --dataset.repo_id=${HF_USER}/koch_test \
@@ -893,79 +667,78 @@ python lerobot/scripts/train.py \
   --wandb.enable=true
 ```
 
-Let's explain it:
-1. We provided the dataset as argument with `--dataset.repo_id=${HF_USER}/koch_test`.
-2. We provided the policy with `policy.type=act`. This loads configurations from [`configuration_act.py`](../lerobot/common/policies/act/configuration_act.py). Importantly, this policy will automatically adapt to the number of motor sates, motor actions and cameras of your robot (e.g. `laptop` and `phone`) which have been saved in your dataset.
-4. We provided `policy.device=cuda` since we are training on a Nvidia GPU, but you could use `policy.device=mps` to train on Apple silicon.
-5. We provided `wandb.enable=true` to use [Weights and Biases](https://docs.wandb.ai/quickstart) for visualizing training plots. This is optional but if you use it, make sure you are logged in by running `wandb login`.
+让我们解释一下：
+1. 我们通过 `--dataset.repo_id=${HF_USER}/koch_test` 提供了数据集作为参数。
+2. 我们通过 `policy.type=act` 提供了策略。这会从[`configuration_act.py`](../lerobot/common/policies/act/configuration_act.py)加载配置。重要的是，这个策略将自动适应您机器人的电机状态数量、电机动作数量和摄像头（例如`laptop`和`phone`），这些都已保存在您的数据集中。
+4. 我们提供了 `policy.device=cuda`，因为我们在Nvidia GPU上训练，但您也可以使用 `policy.device=mps` 在Apple silicon上训练。
+5. 我们提供了 `wandb.enable=true` 以使用[Weights and Biases](https://docs.wandb.ai/quickstart)来可视化训练图表。这是可选的，但如果使用，请确保通过运行 `wandb login` 登录。
 
-For more information on the `train` script see the previous tutorial: [`examples/4_train_policy_with_script.md`](../examples/4_train_policy_with_script.md)
+有关`train`脚本的更多信息，请参阅前面的教程：[`examples/4_train_policy_with_script.md`](../examples/4_train_policy_with_script.md)
 
-### b. (Optional) Upload policy checkpoints to the hub
+### b. （可选）将策略检查点上传到hub
 
-Once training is done, upload the latest checkpoint with:
+训练完成后，使用以下命令上传最新检查点：
 ```bash
 huggingface-cli upload ${HF_USER}/act_koch_test \
   outputs/train/act_koch_test/checkpoints/last/pretrained_model
 ```
 
-You can also upload intermediate checkpoints with:
+您也可以上传中间检查点：
 ```bash
 CKPT=010000
 huggingface-cli upload ${HF_USER}/act_koch_test_${CKPT} \
   outputs/train/act_koch_test/checkpoints/${CKPT}/pretrained_model
 ```
 
-## 5. Evaluate your policy
+## 5. 评估您的策略
 
-Now that you have a policy checkpoint, you can easily control your robot with it using methods from [`ManipulatorRobot`](../lerobot/common/robot_devices/robots/manipulator.py) and the policy.
+现在您有了策略检查点，可以使用[`ManipulatorRobot`](../lerobot/common/robot_devices/robots/manipulator.py)和策略中的方法轻松控制您的机器人。
 
-Try this code for running inference for 60 seconds at 30 fps:
+尝试以下代码，以30 fps的速度运行60秒的推理：
 ```python
 from lerobot.common.policies.act.modeling_act import ACTPolicy
 
 inference_time_s = 60
 fps = 30
-device = "cuda"  # TODO: On Mac, use "mps" or "cpu"
+device = "cuda"  # 注意：在Mac上，使用 "mps" 或 "cpu"
 
 ckpt_path = "outputs/train/act_koch_test/checkpoints/last/pretrained_model"
 policy = ACTPolicy.from_pretrained(ckpt_path)
 policy.to(device)
 
 for _ in range(inference_time_s * fps):
-    start_time = time.perf_counter()
+  start_time = time.perf_counter()
 
-    # Read the follower state and access the frames from the cameras
-    observation = robot.capture_observation()
+  # 读取跟随者状态并访问摄像头中的帧
+  observation = robot.capture_observation()
 
-    # Convert to pytorch format: channel first and float32 in [0,1]
-    # with batch dimension
-    for name in observation:
-        if "image" in name:
-            observation[name] = observation[name].type(torch.float32) / 255
-            observation[name] = observation[name].permute(2, 0, 1).contiguous()
-        observation[name] = observation[name].unsqueeze(0)
-        observation[name] = observation[name].to(device)
+  # 转换为pytorch格式：通道在前，float32类型，像素范围在[0,1]
+  # 带有批次维度
+  for name in observation:
+    if "image" in name:
+      observation[name] = observation[name].type(torch.float32) / 255
+      observation[name] = observation[name].permute(2, 0, 1).contiguous()
+    observation[name] = observation[name].unsqueeze(0)
+    observation[name] = observation[name].to(device)
 
-    # Compute the next action with the policy
-    # based on the current observation
-    action = policy.select_action(observation)
-    # Remove batch dimension
-    action = action.squeeze(0)
-    # Move to cpu, if not already the case
-    action = action.to("cpu")
-    # Order the robot to move
-    robot.send_action(action)
+  # 使用策略基于当前观察计算下一个动作
+  action = policy.select_action(observation)
+  # 移除批次维度
+  action = action.squeeze(0)
+  # 移动到cpu（如果尚未移动）
+  action = action.to("cpu")
+  # 命令机器人移动
+  robot.send_action(action)
 
-    dt_s = time.perf_counter() - start_time
-    busy_wait(1 / fps - dt_s)
+  dt_s = time.perf_counter() - start_time
+  busy_wait(1 / fps - dt_s)
 ```
 
-### a. Use our `record` function
+### a. 使用我们的 `record` 函数
 
-Ideally, when controlling your robot with your neural network, you would want to record evaluation episodes and to be able to visualize them later on, or even train on them like in Reinforcement Learning. This pretty much corresponds to recording a new dataset but with a neural network providing the actions instead of teleoperation.
+理想情况下，当使用神经网络控制机器人时，您可能希望记录评估回合，以便稍后可视化它们，甚至像在强化学习中那样对它们进行训练。这基本上对应于记录一个新数据集，但使用神经网络提供动作而不是远程操作。
 
-To this end, you can use the `record` function from [`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py) but with a policy checkpoint as input. For instance, run this command to record 10 evaluation episodes:
+为此，您可以使用[`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py)中的`record`函数，但将策略检查点作为输入。例如，运行以下命令记录10个评估回合：
 ```bash
 python lerobot/scripts/control_robot.py \
   --robot.type=koch \
@@ -981,18 +754,277 @@ python lerobot/scripts/control_robot.py \
   --control.policy.path=outputs/train/act_koch_test/checkpoints/last/pretrained_model
 ```
 
-As you can see, it's almost the same command as previously used to record your training dataset. Two things changed:
-1. There is an additional `--control.policy.path` argument which indicates the path to your policy checkpoint with  (e.g. `outputs/train/eval_koch_test/checkpoints/last/pretrained_model`). You can also use the model repository if you uploaded a model checkpoint to the hub (e.g. `${HF_USER}/act_koch_test`).
-2. The name of dataset begins by `eval` to reflect that you are running inference (e.g. `${HF_USER}/eval_act_koch_test`).
+如您所见，它几乎与之前用于记录训练数据集的命令相同。有两点变化：
+1. 有一个额外的 `--control.policy.path` 参数，指示策略检查点的路径（例如 `outputs/train/eval_koch_test/checkpoints/last/pretrained_model`）。如果您将模型检查点上传到hub，您也可以使用模型库（例如 `${HF_USER}/act_koch_test`）。
+2. 数据集名称以 `eval` 开头，以反映您正在运行推理（例如 `${HF_USER}/eval_act_koch_test`）。
 
-### b. Visualize evaluation afterwards
+### b. 事后可视化评估
 
-You can then visualize your evaluation dataset by running the same command as before but with the new inference dataset as argument:
+然后，您可以通过运行与之前相同的命令但使用新的推理数据集作为参数来可视化您的评估数据集：
 ```bash
 python lerobot/scripts/visualize_dataset.py \
   --repo-id ${HF_USER}/eval_act_koch_test
 ```
 
-## 6. Next step
+## 6. 下一步
 
-Join our [Discord](https://discord.com/invite/s3KuuzsPFb) to collaborate on data collection and help us train a fully open-source foundational models for robotics!
+加入我们的[Discord](https://discord.com/invite/s3KuuzsPFb)，一起协作收集数据，帮助我们训练完全开源的机器人学习基础模型！
+
+使用您之前学到的知识，您现在可以轻松地记录一个包含单个回合状态和动作的数据集。您可以使用 `busy_wait` 来控制远程操作的速度，并以固定的 `fps`（每秒帧数）进行记录。
+
+尝试以下代码，以60 fps的速度记录30秒：
+```python
+import time
+from lerobot.scripts.control_robot import busy_wait
+
+record_time_s = 30
+fps = 60
+
+states = []
+actions = []
+for _ in range(record_time_s * fps):
+  start_time = time.perf_counter()
+  observation, action = robot.teleop_step(record_data=True)
+
+  states.append(observation["observation.state"])
+  actions.append(action["action"])
+
+  dt_s = time.perf_counter() - start_time
+  busy_wait(1 / fps - dt_s)
+
+# 注意，观察和动作可在RAM中获取，但
+# 您可以使用pickle/hdf5或我们优化的格式
+# `LeRobotDataset`将它们存储在磁盘上。下面会详细介绍。
+```
+
+重要的是，仍有许多实用工具尚未涵盖。例如，如果您有摄像头，您需要将图像保存到磁盘以避免内存不足，并在线程中进行以避免减慢与机器人的通信速度。此外，您需要将数据存储在为训练和网络共享而优化的格式中，如[`LeRobotDataset`](../lerobot/common/datasets/lerobot_dataset.py)。下一节将详细介绍这些内容。
+
+### a. 使用 `record` 函数
+
+您可以使用[`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py)中的`record`函数来实现高效的数据记录。它包含许多记录实用工具：
+1. 摄像头的帧在线程中保存到磁盘，并在每个回合记录结束时编码为视频。
+2. 摄像头的视频流显示在窗口中，以便您可以验证它们。
+3. 数据使用[`LeRobotDataset`](../lerobot/common/datasets/lerobot_dataset.py)格式存储，并推送到您的Hugging Face页面（除非提供了`--control.push_to_hub=false`）。
+4. 在记录过程中进行检查点保存，因此如果出现任何问题，您可以通过再次运行相同的命令并加上`--control.resume=true`来恢复记录。如果您想从头开始记录，则需要手动删除数据集目录。
+5. 使用命令行参数设置数据记录流程：
+   - `--control.warmup_time_s=10` 定义在开始数据收集前的预热秒数。它允许机器人设备预热和同步（默认为10秒）。
+   - `--control.episode_time_s=60` 定义每个回合数据记录的秒数（默认为60秒）。
+   - `--control.reset_time_s=60` 定义每个回合后重置环境的秒数（默认为60秒）。
+   - `--control.num_episodes=50` 定义要记录的回合数量（默认为50）。
+6. 在数据记录过程中使用键盘按键控制流程：
+   - 在回合记录过程中任何时候按右箭头 `->` 可提前停止并进入重置阶段。在重置过程中同样可以提前停止并进入下一回合记录。
+   - 在回合记录或重置过程中任何时候按左箭头 `<-` 可提前停止，取消当前回合，并重新记录。
+   - 在回合记录过程中任何时候按Esc键 `ESC` 可提前结束会话并直接进入视频编码和数据集上传阶段。
+7. 与 `teleoperate` 类似，您也可以使用命令行覆盖任何设置。
+
+在尝试 `record` 之前，如果您想将数据集推送到hub，请确保您已使用具有写访问权限的令牌登录，该令牌可以从[Hugging Face设置](https://huggingface.co/settings/tokens)生成：
+```bash
+huggingface-cli login --token ${HUGGINGFACE_TOKEN} --add-to-git-credential
+```
+同时，将您的Hugging Face仓库名称存储在一个变量中（例如 `cadene` 或 `lerobot`）。例如，运行以下命令使用您的Hugging Face用户名作为仓库：
+```bash
+HF_USER=$(huggingface-cli whoami | head -n 1)
+echo $HF_USER
+```
+如果您不想推送到hub，请使用 `--control.push_to_hub=false`。
+
+现在运行以下命令记录2个回合：
+```bash
+python lerobot/scripts/control_robot.py \
+  --robot.type=koch \
+  --control.type=record \
+  --control.single_task="抓取一个乐高积木并将其放入箱中。" \
+  --control.fps=30 \
+  --control.repo_id=${HF_USER}/koch_test \
+  --control.tags='["tutorial"]' \
+  --control.warmup_time_s=5 \
+  --control.episode_time_s=30 \
+  --control.reset_time_s=30 \
+  --control.num_episodes=2 \
+  --control.push_to_hub=true
+```
+
+这将把您的数据集本地写入 `~/.cache/huggingface/lerobot/{repo-id}`（例如 `data/cadene/koch_test`）并将其推送到hub上的 `https://huggingface.co/datasets/{HF_USER}/{repo-id}`。您的数据集将自动标记为 `LeRobot`，以便社区可以轻松找到它，您还可以添加自定义标签（在本例中为 `tutorial`）。
+
+您可以通过搜索 `LeRobot` 标签在hub上查找其他LeRobot数据集：https://huggingface.co/datasets?other=LeRobot
+
+您将看到许多行出现，如下所示：
+```
+INFO 2024-08-10 15:02:58 ol_robot.py:219 dt:33.34 (30.0hz) dtRlead: 5.06 (197.5hz) dtWfoll: 0.25 (3963.7hz) dtRfoll: 6.22 (160.7hz) dtRlaptop: 32.57 (30.7hz) dtRphone: 33.84 (29.5hz)
+```
+它包含：
+- `2024-08-10 15:02:58`，即调用print函数的日期和时间，
+- `ol_robot.py:219`，即调用print函数的文件名末尾和行号（`lerobot/scripts/control_robot.py` 第 `219` 行）。
+- `dt:33.34 (30.0hz)`，即前一次调用`robot.teleop_step(record_data=True)`与当前调用之间花费的"时间增量"或毫秒数，以及相关频率（33.34毫秒等于30.0 Hz）；注意我们使用 `--fps 30` 所以我们期望频率为30.0 Hz；当一个步骤花费更多时间时，该行会显示为黄色。
+- `dtRlead: 5.06 (197.5hz)`，即读取引导臂当前位置的时间增量。
+- `dtWfoll: 0.25 (3963.7hz)`，即在跟随臂上写入目标位置的时间增量；写入是异步的，所以比读取花费的时间更少。
+- `dtRfoll: 6.22 (160.7hz)`，即读取跟随臂当前位置的时间增量。
+- `dtRlaptop:32.57 (30.7hz)`，即在异步运行的线程中从笔记本电脑摄像头捕获图像的时间增量。
+- `dtRphone:33.84 (29.5hz)`，即在异步运行的线程中从手机摄像头捕获图像的时间增量。
+
+故障排除：
+- 在Linux上，如果在数据记录过程中左右箭头键和Esc键没有任何效果，请确保您已设置`$DISPLAY`环境变量。参见[pynput限制](https://pynput.readthedocs.io/en/latest/limitations.html#linux)。
+
+数据记录结束时，您的数据集将上传到您的Hugging Face页面（例如 https://huggingface.co/datasets/cadene/koch_test），您可以通过运行以下命令获取该页面：
+```bash
+echo https://huggingface.co/datasets/${HF_USER}/koch_test
+```
+
+### b. 记录数据集的建议
+
+一旦您熟悉了数据记录，就可以创建更大的数据集用于训练了。一个良好的起始任务是在不同位置抓取物体并将其放入箱中。我们建议至少记录50个回合，每个位置10个回合。保持摄像头固定，并在整个记录过程中保持一致的抓取行为。
+
+在接下来的部分中，您将训练您的神经网络。在实现可靠的抓取性能后，您可以开始在数据收集过程中引入更多变化，如额外的抓取位置、不同的抓取技术以及改变摄像头位置。
+
+避免过快地添加太多变化，因为这可能会阻碍您的结果。
+
+在未来几个月内，我们计划发布一个用于机器人学习的基础模型。我们预计微调这个模型将增强泛化能力，减少在数据收集过程中对严格一致性的需求。
+
+### c. 可视化所有回合
+
+您可以通过运行以下命令可视化您的数据集：
+```bash
+python lerobot/scripts/visualize_dataset_html.py \
+  --repo-id ${HF_USER}/koch_test
+```
+
+注意：如果您的数据集未上传到hugging face hub，您可能需要添加 `--local-files-only 1`。
+
+这将启动一个本地web服务器，如下所示：
+<div style="text-align:center;">
+  <img src="../media/tutorial/visualize_dataset_html.webp?raw=true" alt="Koch v1.1引导臂和跟随臂" title="Koch v1.1引导臂和跟随臂" width="100%">
+</div>
+
+### d. 使用 `replay` 函数在机器人上重放回合
+
+[`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py)的一个有用功能是 `replay` 函数，它允许在您的机器人上重放您已记录的任何回合或来自其他数据集的回合。此功能帮助您测试机器人动作的可重复性，并评估相同型号机器人之间的可迁移性。
+
+要重放您刚记录的数据集的第一个回合，请运行以下命令：
+```bash
+python lerobot/scripts/control_robot.py \
+  --robot.type=koch \
+  --control.type=replay \
+  --control.fps=30 \
+  --control.repo_id=${HF_USER}/koch_test \
+  --control.episode=0
+```
+
+您的机器人应该复制类似于您记录的动作。例如，查看[这个视频](https://x.com/RemiCadene/status/1793654950905680090)，我们在来自[Trossen Robotics](https://www.trossenrobotics.com)的Aloha机器人上使用`replay`。
+
+## 4. 基于数据训练策略
+
+### a. 使用 `train` 脚本
+
+要训练用于控制机器人的策略，请使用[`python lerobot/scripts/train.py`](../lerobot/scripts/train.py)脚本。需要几个参数。以下是示例命令：
+```bash
+python lerobot/scripts/train.py \
+  --dataset.repo_id=${HF_USER}/koch_test \
+  --policy.type=act \
+  --output_dir=outputs/train/act_koch_test \
+  --job_name=act_koch_test \
+  --policy.device=cuda \
+  --wandb.enable=true
+```
+
+让我们解释一下：
+1. 我们通过 `--dataset.repo_id=${HF_USER}/koch_test` 提供了数据集作为参数。
+2. 我们通过 `policy.type=act` 提供了策略。这会从[`configuration_act.py`](../lerobot/common/policies/act/configuration_act.py)加载配置。重要的是，这个策略将自动适应您机器人的电机状态数量、电机动作数量和摄像头（例如`laptop`和`phone`），这些都已保存在您的数据集中。
+4. 我们提供了 `policy.device=cuda`，因为我们在Nvidia GPU上训练，但您也可以使用 `policy.device=mps` 在Apple silicon上训练。
+5. 我们提供了 `wandb.enable=true` 以使用[Weights and Biases](https://docs.wandb.ai/quickstart)来可视化训练图表。这是可选的，但如果使用，请确保通过运行 `wandb login` 登录。
+
+有关`train`脚本的更多信息，请参阅前面的教程：[`examples/4_train_policy_with_script.md`](../examples/4_train_policy_with_script.md)
+
+### b. （可选）将策略检查点上传到hub
+
+训练完成后，使用以下命令上传最新检查点：
+```bash
+huggingface-cli upload ${HF_USER}/act_koch_test \
+  outputs/train/act_koch_test/checkpoints/last/pretrained_model
+```
+
+您也可以上传中间检查点：
+```bash
+CKPT=010000
+huggingface-cli upload ${HF_USER}/act_koch_test_${CKPT} \
+  outputs/train/act_koch_test/checkpoints/${CKPT}/pretrained_model
+```
+
+## 5. 评估您的策略
+
+现在您有了策略检查点，可以使用[`ManipulatorRobot`](../lerobot/common/robot_devices/robots/manipulator.py)和策略中的方法轻松控制您的机器人。
+
+尝试以下代码，以30 fps的速度运行60秒的推理：
+```python
+from lerobot.common.policies.act.modeling_act import ACTPolicy
+
+inference_time_s = 60
+fps = 30
+device = "cuda"  # 注意：在Mac上，使用 "mps" 或 "cpu"
+
+ckpt_path = "outputs/train/act_koch_test/checkpoints/last/pretrained_model"
+policy = ACTPolicy.from_pretrained(ckpt_path)
+policy.to(device)
+
+for _ in range(inference_time_s * fps):
+  start_time = time.perf_counter()
+
+  # 读取跟随者状态并访问摄像头中的帧
+  observation = robot.capture_observation()
+
+  # 转换为pytorch格式：通道在前，float32类型，像素范围在[0,1]
+  # 带有批次维度
+  for name in observation:
+    if "image" in name:
+      observation[name] = observation[name].type(torch.float32) / 255
+      observation[name] = observation[name].permute(2, 0, 1).contiguous()
+    observation[name] = observation[name].unsqueeze(0)
+    observation[name] = observation[name].to(device)
+
+  # 使用策略基于当前观察计算下一个动作
+  action = policy.select_action(observation)
+  # 移除批次维度
+  action = action.squeeze(0)
+  # 移动到cpu（如果尚未移动）
+  action = action.to("cpu")
+  # 命令机器人移动
+  robot.send_action(action)
+
+  dt_s = time.perf_counter() - start_time
+  busy_wait(1 / fps - dt_s)
+```
+
+### a. 使用我们的 `record` 函数
+
+理想情况下，当使用神经网络控制机器人时，您可能希望记录评估回合，以便稍后可视化它们，甚至像在强化学习中那样对它们进行训练。这基本上对应于记录一个新数据集，但使用神经网络提供动作而不是远程操作。
+
+为此，您可以使用[`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py)中的`record`函数，但将策略检查点作为输入。例如，运行以下命令记录10个评估回合：
+```bash
+python lerobot/scripts/control_robot.py \
+  --robot.type=koch \
+  --control.type=record \
+  --control.fps=30 \
+  --control.repo_id=${HF_USER}/eval_act_koch_test \
+  --control.tags='["tutorial"]' \
+  --control.warmup_time_s=5 \
+  --control.episode_time_s=30 \
+  --control.reset_time_s=30 \
+  --control.num_episodes=10 \
+  --control.push_to_hub=true \
+  --control.policy.path=outputs/train/act_koch_test/checkpoints/last/pretrained_model
+```
+
+如您所见，它几乎与之前用于记录训练数据集的命令相同。有两点变化：
+1. 有一个额外的 `--control.policy.path` 参数，指示策略检查点的路径（例如 `outputs/train/eval_koch_test/checkpoints/last/pretrained_model`）。如果您将模型检查点上传到hub，您也可以使用模型库（例如 `${HF_USER}/act_koch_test`）。
+2. 数据集名称以 `eval` 开头，以反映您正在运行推理（例如 `${HF_USER}/eval_act_koch_test`）。
+
+### b. 事后可视化评估
+
+然后，您可以通过运行与之前相同的命令但使用新的推理数据集作为参数来可视化您的评估数据集：
+```bash
+python lerobot/scripts/visualize_dataset.py \
+  --repo-id ${HF_USER}/eval_act_koch_test
+```
+
+## 6. 下一步
+
+加入我们的[Discord](https://discord.com/invite/s3KuuzsPFb)，一起协作收集数据，帮助我们训练完全开源的机器人学习基础模型！

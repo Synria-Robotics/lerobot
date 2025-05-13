@@ -1,0 +1,12 @@
+ 
+
+ tuili
+ python lerobot/scripts/control_robot.py   --robot.type=xuanya_arm   --control.type=record   --control.fps=30   --control.single_task="机械臂抓取物体任务"   --control.repo_id=local/eval_xuanya_task1   --control.warmup_time_s=5   --control.episode_time_s=15   --control.reset_time_s=5   --control.num_episodes=3   --control.push_to_hub=false   --control.policy.path=outputs/train/act_xuanya_task1/checkpoints/last/pretrained_model
+
+
+ xunlian
+ python lerobot/scripts/train.py   --dataset.repo_id=local/xuanya_dataset_task1   --dataset.root=/home/ubuntu/.cache/huggingface/lerobot/local/xuanya_dataset_task1   --policy.type=act   --output_dir=outputs/train/act_xuanya_task1   --job_name=act_xuanya_task1   --policy.device=cuda   --wandb.enable=false
+
+shouji 
+python lerobot/scripts/control_robot.py   --robot.type=xuanya_arm   --control.type=record   --control.fps=30   --control.single_task="机械臂抓取物体任务"   --control.repo_id=local/xuanya_dataset_task1   --control.warmup_time_s=5   --control.episode_time_s=10   --control.reset_time_s=5   --control.num_episodes=2   --control.push_to_hub=false 
+

@@ -48,6 +48,7 @@ import itertools
 
 from lerobot.__version__ import __version__  # noqa: F401
 
+
 # TODO(rcadene): Improve policies and envs. As of now, an item in `available_policies`
 # refers to a yaml file AND a modeling name. Same for `available_envs` which refers to
 # a yaml file AND a environment name. The difference should be more obvious.
@@ -182,6 +183,7 @@ available_robots = [
     "aloha",
     "so100",
     "moss",
+    "xuanya_arm",
 ]
 
 # lists all available cameras from `lerobot/common/robot_devices/cameras`

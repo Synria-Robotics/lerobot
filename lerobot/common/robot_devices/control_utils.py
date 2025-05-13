@@ -244,6 +244,9 @@ def control_loop(
     timestamp = 0
     start_episode_t = time.perf_counter()
     while timestamp < control_time_s:
+
+
+
         start_loop_t = time.perf_counter()
 
         if teleoperate:
@@ -269,10 +272,12 @@ def control_loop(
             for k, v in action.items():
                 for i, vv in enumerate(v):
                     rr.log(f"sent_{k}_{i}", rr.Scalar(vv.numpy()))
+                    #print(f"Sent action {k} for index {i}: {vv.numpy()}")
 
             image_keys = [key for key in observation if "image" in key]
             for key in image_keys:
                 rr.log(key, rr.Image(observation[key].numpy()), static=True)
+                #print(f"Logged image for key: {key}")
 
         if fps is not None:
             dt_s = time.perf_counter() - start_loop_t

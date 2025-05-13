@@ -13,17 +13,17 @@
 # limitations under the License.
 
 """
-This script demonstrates the use of `LeRobotDataset` class for handling and processing robotic datasets from Hugging Face.
-It illustrates how to load datasets, manipulate them, and apply transformations suitable for machine learning tasks in PyTorch.
+此脚本演示了如何使用 `LeRobotDataset` 类处理来自 Hugging Face 的机器人数据集。
+它说明了如何加载数据集、操作数据集以及应用适用于 PyTorch 中机器学习任务的转换。
 
-Features included in this script:
-- Viewing a dataset's metadata and exploring its properties.
-- Loading an existing dataset from the hub or a subset of it.
-- Accessing frames by episode number.
-- Using advanced dataset features like timestamp-based frame selection.
-- Demonstrating compatibility with PyTorch DataLoader for batch processing.
+此脚本包含的功能：
+- 查看数据集的元数据并探索其属性。
+- 从 hub 加载现有数据集或其子集。
+- 按 episode 编号访问帧。
+- 使用高级数据集功能，例如基于时间戳的帧选择。
+- 演示与 PyTorch DataLoader 的兼容性以进行批处理。
 
-The script ends with examples of how to batch process data using PyTorch's DataLoader.
+该脚本以如何使用 PyTorch 的 DataLoader 进行批处理数据的示例结束。
 """
 
 from pprint import pprint
@@ -34,106 +34,106 @@ from huggingface_hub import HfApi
 import lerobot
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset, LeRobotDatasetMetadata
 
-# We ported a number of existing datasets ourselves, use this to see the list:
-print("List of available datasets:")
-pprint(lerobot.available_datasets)
+# 我们自己移植了许多现有的数据集，使用此命令查看列表：
+# print("可用数据集列表：")
+# pprint(lerobot.available_datasets)
 
-# You can also browse through the datasets created/ported by the community on the hub using the hub api:
-hub_api = HfApi()
-repo_ids = [info.id for info in hub_api.list_datasets(task_categories="robotics", tags=["LeRobot"])]
-pprint(repo_ids)
+# 您还可以使用 hub api 浏览社区在 hub 上创建/移植的数据集：
+# hub_api = HfApi()
+# repo_ids = [info.id for info in hub_api.list_datasets(task_categories="robotics", tags=["LeRobot"])]
+# pprint(repo_ids)
 
-# Or simply explore them in your web browser directly at:
+# 或者直接在您的网络浏览器中浏览它们：
 # https://huggingface.co/datasets?other=LeRobot
 
-# Let's take this one for this example
+# 让我们以这个为例
 repo_id = "lerobot/aloha_mobile_cabinet"
-# We can have a look and fetch its metadata to know more about it:
+
+# 我们可以查看并获取其元数据以了解更多信息：
 ds_meta = LeRobotDatasetMetadata(repo_id)
 
-# By instantiating just this class, you can quickly access useful information about the content and the
-# structure of the dataset without downloading the actual data yet (only metadata files — which are
-# lightweight).
-print(f"Total number of episodes: {ds_meta.total_episodes}")
-print(f"Average number of frames per episode: {ds_meta.total_frames / ds_meta.total_episodes:.3f}")
-print(f"Frames per second used during data collection: {ds_meta.fps}")
-print(f"Robot type: {ds_meta.robot_type}")
-print(f"keys to access images from cameras: {ds_meta.camera_keys=}\n")
 
-print("Tasks:")
+# 通过仅实例化此类，您可以快速访问有关数据集内容和结构的有用信息，
+# 而无需下载实际数据（仅元数据文件——这些文件是轻量级的）。
+print(f"总 episode 数：{ds_meta.total_episodes}")
+print(f"每个 episode 的平均帧数：{ds_meta.total_frames / ds_meta.total_episodes:.3f}")
+print(f"数据收集期间使用的每秒帧数：{ds_meta.fps}")
+print(f"机器人类型：{ds_meta.robot_type}")
+print(f"用于访问相机图像的键：{ds_meta.camera_keys=}\n")
+
+print("任务：")
 print(ds_meta.tasks)
-print("Features:")
+print("特征：")
 pprint(ds_meta.features)
 
-# You can also get a short summary by simply printing the object:
+# 您还可以通过简单地打印对象来获得简短摘要：
+print("打印全部信息")
 print(ds_meta)
 
-# You can then load the actual dataset from the hub.
-# Either load any subset of episodes:
+# 然后您可以从 hub 加载实际的数据集。
+# 加载任何 episode 子集：
 dataset = LeRobotDataset(repo_id, episodes=[0, 10, 11, 23])
 
-# And see how many frames you have:
-print(f"Selected episodes: {dataset.episodes}")
-print(f"Number of episodes selected: {dataset.num_episodes}")
-print(f"Number of frames selected: {dataset.num_frames}")
+# 查看您有多少帧：
+print(f"选定的 episodes：{dataset.episodes}")
+print(f"选定的 episode 数量：{dataset.num_episodes}")
+print(f"选定的帧数：{dataset.num_frames}")
 
-# Or simply load the entire dataset:
+# 或者简单地加载整个数据集：
 dataset = LeRobotDataset(repo_id)
-print(f"Number of episodes selected: {dataset.num_episodes}")
-print(f"Number of frames selected: {dataset.num_frames}")
+print(f"选定的 episode 数量：{dataset.num_episodes}")
+print(f"选定的帧数：{dataset.num_frames}")
 
-# The previous metadata class is contained in the 'meta' attribute of the dataset:
+# 先前的元数据类包含在数据集的 'meta' 属性中：
+print("先前的元数据类包含在数据集的 'meta' 属性中：")
 print(dataset.meta)
 
-# LeRobotDataset actually wraps an underlying Hugging Face dataset
-# (see https://huggingface.co/docs/datasets for more information).
+# LeRobotDataset 实际上包装了一个底层的 Hugging Face 数据集
+# （有关更多信息，请参阅 https://huggingface.co/docs/datasets）。
 print(dataset.hf_dataset)
 
-# LeRobot datasets also subclasses PyTorch datasets so you can do everything you know and love from working
-# with the latter, like iterating through the dataset.
-# The __getitem__ iterates over the frames of the dataset. Since our datasets are also structured by
-# episodes, you can access the frame indices of any episode using the episode_data_index. Here, we access
-# frame indices associated to the first episode:
+# LeRobot 数据集还继承了 PyTorch 数据集，因此您可以执行您熟悉和喜爱的所有操作，
+# 例如迭代数据集。
+# __getitem__ 迭代数据集的帧。由于我们的数据集也按 episode 结构化，
+# 您可以使用 episode_data_index 访问任何 episode 的帧索引。在这里，我们访问与第一个 episode 关联的帧索引：
 episode_index = 0
 from_idx = dataset.episode_data_index["from"][episode_index].item()
 to_idx = dataset.episode_data_index["to"][episode_index].item()
 
-# Then we grab all the image frames from the first camera:
+# 然后我们从第一个相机获取所有图像帧：
 camera_key = dataset.meta.camera_keys[0]
 frames = [dataset[idx][camera_key] for idx in range(from_idx, to_idx)]
 
-# The objects returned by the dataset are all torch.Tensors
+# 数据集返回的对象都是 torch.Tensors
 print(type(frames[0]))
 print(frames[0].shape)
 
-# Since we're using pytorch, the shape is in pytorch, channel-first convention (c, h, w).
-# We can compare this shape with the information available for that feature
+# 由于我们使用的是 pytorch，因此形状采用 pytorch 的 channel-first 约定 (c, h, w)。
+# 我们可以将此形状与该特征的可用信息进行比较
 pprint(dataset.features[camera_key])
-# In particular:
+# 特别是：
 print(dataset.features[camera_key]["shape"])
-# The shape is in (h, w, c) which is a more universal format.
+# 形状为 (h, w, c)，这是一种更通用的格式。
 
-# For many machine learning applications we need to load the history of past observations or trajectories of
-# future actions. Our datasets can load previous and future frames for each key/modality, using timestamps
-# differences with the current loaded frame. For instance:
+# 对于许多机器学习应用程序，我们需要加载过去观察的历史记录或未来动作的轨迹。
+# 我们的数据集可以使用与当前加载帧的时间戳差异来加载每个键/模态的先前和未来帧。例如：
 delta_timestamps = {
-    # loads 4 images: 1 second before current frame, 500 ms before, 200 ms before, and current frame
+    # 加载 4 张图像：当前帧之前 1 秒、之前 500 毫秒、之前 200 毫秒和当前帧
     camera_key: [-1, -0.5, -0.20, 0],
-    # loads 6 state vectors: 1.5 seconds before, 1 second before, ... 200 ms, 100 ms, and current frame
+    # 加载 6 个状态向量：当前帧之前 1.5 秒、之前 1 秒、... 200 毫秒、100 毫秒和当前帧
     "observation.state": [-1.5, -1, -0.5, -0.20, -0.10, 0],
-    # loads 64 action vectors: current frame, 1 frame in the future, 2 frames, ... 63 frames in the future
+    # 加载 64 个动作向量：当前帧、未来 1 帧、未来 2 帧、... 未来 63 帧
     "action": [t / dataset.fps for t in range(64)],
 }
-# Note that in any case, these delta_timestamps values need to be multiples of (1/fps) so that added to any
-# timestamp, you still get a valid timestamp.
+# 请注意，在任何情况下，这些 delta_timestamps 值都需要是 (1/fps) 的倍数，以便添加到任何时间戳后，
+# 您仍然可以获得有效的时间戳。
 
 dataset = LeRobotDataset(repo_id, delta_timestamps=delta_timestamps)
 print(f"\n{dataset[0][camera_key].shape=}")  # (4, c, h, w)
 print(f"{dataset[0]['observation.state'].shape=}")  # (6, c)
 print(f"{dataset[0]['action'].shape=}\n")  # (64, c)
 
-# Finally, our datasets are fully compatible with PyTorch dataloaders and samplers because they are just
-# PyTorch datasets.
+# 最后，我们的数据集与 PyTorch dataloaders 和 samplers 完全兼容，因为它们只是 PyTorch 数据集。
 dataloader = torch.utils.data.DataLoader(
     dataset,
     num_workers=0,

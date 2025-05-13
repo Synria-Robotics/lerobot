@@ -18,8 +18,9 @@ tmp
 wandb
 
 # Data
-data
-outputs
+data/
+outputs/
+Alicia_duo_sdk/
 
 # Apple
 .DS_Store

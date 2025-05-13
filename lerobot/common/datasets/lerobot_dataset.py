@@ -366,37 +366,31 @@ class LeRobotDataset(torch.utils.data.Dataset):
         video_backend: str | None = None,
     ):
         """
-        2 modes are available for instantiating this class, depending on 2 different use cases:
+        此类有两种实例化模式，对应两种不同的使用场景：
 
-        1. Your dataset already exists:
-            - On your local disk in the 'root' folder. This is typically the case when you recorded your
-              dataset locally and you may or may not have pushed it to the hub yet. Instantiating this class
-              with 'root' will load your dataset directly from disk. This can happen while you're offline (no
-              internet connection).
+        1. 您的数据集已存在：
+            - 在本地磁盘的'root'文件夹中。这通常是您在本地记录数据集的情况，您可能已经或尚未将其推送到Hub。
+              使用'root'实例化此类将直接从磁盘加载您的数据集。这可以在您离线（无互联网连接）时进行。
 
-            - On the Hugging Face Hub at the address https://huggingface.co/datasets/{repo_id} and not on
-              your local disk in the 'root' folder. Instantiating this class with this 'repo_id' will download
-              the dataset from that address and load it, pending your dataset is compliant with
-              codebase_version v2.0. If your dataset has been created before this new format, you will be
-              prompted to convert it using our conversion script from v1.6 to v2.0, which you can find at
-              lerobot/common/datasets/v2/convert_dataset_v1_to_v2.py.
+            - 在Hugging Face Hub的地址https://huggingface.co/datasets/{repo_id}上，但不在您本地磁盘的'root'
+              文件夹中。使用此'repo_id'实例化此类将从该地址下载数据集并加载它，前提是您的数据集符合codebase_version v2.0。
+              如果您的数据集是在这种新格式之前创建的，系统会提示您使用我们的转换脚本从v1.6转换到v2.0，
+              该脚本可在lerobot/common/datasets/v2/convert_dataset_v1_to_v2.py中找到。
 
 
-        2. Your dataset doesn't already exists (either on local disk or on the Hub): you can create an empty
-           LeRobotDataset with the 'create' classmethod. This can be used for recording a dataset or port an
-           existing dataset to the LeRobotDataset format.
+        2. 您的数据集尚不存在（无论是在本地磁盘还是在Hub上）：您可以使用'create'类方法创建一个空的LeRobotDataset。
+           这可用于记录数据集或将现有数据集转换为LeRobotDataset格式。
 
 
-        In terms of files, LeRobotDataset encapsulates 3 main things:
-            - metadata:
-                - info contains various information about the dataset like shapes, keys, fps etc.
-                - stats stores the dataset statistics of the different modalities for normalization
-                - tasks contains the prompts for each task of the dataset, which can be used for
-                  task-conditioned training.
-            - hf_dataset (from datasets.Dataset), which will read any values from parquet files.
-            - videos (optional) from which frames are loaded to be synchronous with data from parquet files.
+        在文件方面，LeRobotDataset主要包含3个部分：
+            - 元数据：
+            - info包含有关数据集的各种信息，如形状、键、fps等
+            - stats存储不同模态的数据集统计信息，用于标准化
+            - tasks包含数据集中每个任务的提示，可用于任务条件训练
+            - hf_dataset（来自datasets.Dataset），将从parquet文件读取任何值
+            - 视频（可选），从中加载帧以与来自parquet文件的数据同步
 
-        A typical LeRobotDataset looks like this from its root path:
+        一个典型的LeRobotDataset从其根路径看起来像这样：
         .
         ├── data
         │   ├── chunk-000
@@ -430,41 +424,28 @@ class LeRobotDataset(torch.utils.data.Dataset):
             ├── chunk-001
             └── ...
 
-        Note that this file-based structure is designed to be as versatile as possible. The files are split by
-        episodes which allows a more granular control over which episodes one wants to use and download. The
-        structure of the dataset is entirely described in the info.json file, which can be easily downloaded
-        or viewed directly on the hub before downloading any actual data. The type of files used are very
-        simple and do not need complex tools to be read, it only uses .parquet, .json and .mp4 files (and .md
-        for the README).
+        请注意，这种基于文件的结构设计得尽可能通用。文件按照情节（episodes）分割，这允许对用户想要使用和下载的情节进行更细粒度的控制。
+        数据集的结构完全在info.json文件中描述，该文件可以在下载任何实际数据之前轻松下载或直接在hub上查看。
+        使用的文件类型非常简单，不需要复杂的工具来读取，仅使用.parquet、.json和.mp4文件（以及用于README的.md）。
 
-        Args:
-            repo_id (str): This is the repo id that will be used to fetch the dataset. Locally, the dataset
-                will be stored under root/repo_id.
-            root (Path | None, optional): Local directory to use for downloading/writing files. You can also
-                set the LEROBOT_HOME environment variable to point to a different location. Defaults to
-                '~/.cache/huggingface/lerobot'.
-            episodes (list[int] | None, optional): If specified, this will only load episodes specified by
-                their episode_index in this list. Defaults to None.
-            image_transforms (Callable | None, optional): You can pass standard v2 image transforms from
-                torchvision.transforms.v2 here which will be applied to visual modalities (whether they come
-                from videos or images). Defaults to None.
-            delta_timestamps (dict[list[float]] | None, optional): _description_. Defaults to None.
-            tolerance_s (float, optional): Tolerance in seconds used to ensure data timestamps are actually in
-                sync with the fps value. It is used at the init of the dataset to make sure that each
-                timestamps is separated to the next by 1/fps +/- tolerance_s. This also applies to frames
-                decoded from video files. It is also used to check that `delta_timestamps` (when provided) are
-                multiples of 1/fps. Defaults to 1e-4.
-            revision (str, optional): An optional Git revision id which can be a branch name, a tag, or a
-                commit hash. Defaults to current codebase version tag.
-            sync_cache_first (bool, optional): Flag to sync and refresh local files first. If True and files
-                are already present in the local cache, this will be faster. However, files loaded might not
-                be in sync with the version on the hub, especially if you specified 'revision'. Defaults to
-                False.
-            download_videos (bool, optional): Flag to download the videos. Note that when set to True but the
-                video files are already present on local disk, they won't be downloaded again. Defaults to
-                True.
-            video_backend (str | None, optional): Video backend to use for decoding videos. Defaults to torchcodec when available int the platform; otherwise, defaults to 'pyav'.
-                You can also use the 'pyav' decoder used by Torchvision, which used to be the default option, or 'video_reader' which is another decoder of Torchvision.
+        参数：
+            repo_id (str)：用于获取数据集的仓库ID。在本地，数据集将存储在root/repo_id下。
+            root (Path | None, 可选)：用于下载/写入文件的本地目录。您也可以设置LEROBOT_HOME环境变量指向不同位置。
+            默认为'~/.cache/huggingface/lerobot'。
+            episodes (list[int] | None, 可选)：如果指定，将只加载由此列表中的episode_index指定的情节。默认为None。
+            image_transforms (Callable | None, 可选)：您可以在此处传递torchvision.transforms.v2的标准v2图像转换，
+            这些转换将应用于视觉模态（无论它们来自视频还是图像）。默认为None。
+            delta_timestamps (dict[list[float]] | None, 可选)：_描述_。默认为None。
+            tolerance_s (float, 可选)：以秒为单位的容差，用于确保数据时间戳实际上与fps值同步。它在数据集初始化时使用，
+            以确保每个时间戳与下一个时间戳相隔1/fps +/- tolerance_s。这也适用于从视频文件解码的帧。
+            当提供`delta_timestamps`时，它也用于检查它们是否是1/fps的倍数。默认为1e-4。
+            revision (str, 可选)：可选的Git修订ID，可以是分支名称、标签或提交哈希。默认为当前代码库版本标签。
+            force_cache_sync (bool, 可选)：首先同步和刷新本地文件的标志。如果为True且文件已经存在于本地缓存中，这将更快。
+            但是，加载的文件可能与hub上的版本不同步，特别是如果您指定了'revision'。默认为False。
+            download_videos (bool, 可选)：下载视频的标志。请注意，当设置为True但视频文件已经存在于本地磁盘上时，
+            它们不会被再次下载。默认为True。
+            video_backend (str | None, 可选)：用于解码视频的后端。当平台上可用时默认为torchcodec；否则，默认为'pyav'。
+            您还可以使用Torchvision使用的'pyav'解码器（曾经是默认选项）或Torchvision的另一个解码器'video_reader'。
         """
         super().__init__()
         self.repo_id = repo_id

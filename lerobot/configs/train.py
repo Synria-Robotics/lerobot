@@ -29,7 +29,7 @@ from lerobot.configs import parser
 from lerobot.configs.default import DatasetConfig, EvalConfig, WandBConfig
 from lerobot.configs.policies import PreTrainedConfig
 
-TRAIN_CONFIG_NAME = "train_config.json"
+TRAIN_CONFIG_NAME = "train_config.json"  # 训练配置文件名
 
 
 @dataclass
@@ -37,27 +37,27 @@ class TrainPipelineConfig(HubMixin):
     dataset: DatasetConfig
     env: envs.EnvConfig | None = None
     policy: PreTrainedConfig | None = None
-    # Set `dir` to where you would like to save all of the run outputs. If you run another training session
-    # with the same value for `dir` its contents will be overwritten unless you set `resume` to true.
+    # 将 `dir` 设置为您希望保存所有运行输出的位置。如果您使用相同的 `dir` 值运行另一个训练会话，
+    # 除非您将 `resume` 设置为 true，否则其内容将被覆盖。
     output_dir: Path | None = None
     job_name: str | None = None
-    # Set `resume` to true to resume a previous run. In order for this to work, you will need to make sure
-    # `dir` is the directory of an existing run with at least one checkpoint in it.
-    # Note that when resuming a run, the default behavior is to use the configuration from the checkpoint,
-    # regardless of what's provided with the training command at the time of resumption.
+    # 将 `resume` 设置为 true 以恢复之前的运行。为了使其正常工作，您需要确保
+    # `dir` 是现有运行的目录，其中至少包含一个检查点。
+    # 请注意，恢复运行时，默认行为是使用检查点中的配置，
+    # 而不管恢复时训练命令提供了什么。
     resume: bool = False
-    # `seed` is used for training (eg: model initialization, dataset shuffling)
-    # AND for the evaluation environments.
+    # `seed` 用于训练（例如：模型初始化、数据集打乱）
+    # 以及评估环境。
     seed: int | None = 1000
-    # Number of workers for the dataloader.
-    num_workers: int = 4
-    batch_size: int = 8
-    steps: int = 100_000
-    eval_freq: int = 20_000
-    log_freq: int = 200
+    # 数据加载器的工作线程数。
+    num_workers: int = 8
+    batch_size: int = 32
+    steps: int = 400_000
+    eval_freq: int = 2000
+    log_freq: int = 100
     save_checkpoint: bool = True
-    # Checkpoint is saved every `save_freq` training iterations and after the last training step.
-    save_freq: int = 20_000
+    # 检查点每 `save_freq` 次训练迭代后以及最后一次训练步骤后保存。
+    save_freq: int = 5000
     use_policy_training_preset: bool = True
     optimizer: OptimizerConfig | None = None
     scheduler: LRSchedulerConfig | None = None
@@ -68,24 +68,24 @@ class TrainPipelineConfig(HubMixin):
         self.checkpoint_path = None
 
     def validate(self):
-        # HACK: We parse again the cli args here to get the pretrained paths if there was some.
+        # HACK: 我们在这里再次解析 cli 参数以获取预训练路径（如果存在）。
         policy_path = parser.get_path_arg("policy")
         if policy_path:
-            # Only load the policy config
+            # 仅加载策略配置
             cli_overrides = parser.get_cli_overrides("policy")
             self.policy = PreTrainedConfig.from_pretrained(policy_path, cli_overrides=cli_overrides)
             self.policy.pretrained_path = policy_path
         elif self.resume:
-            # The entire train config is already loaded, we just need to get the checkpoint dir
+            # 整个训练配置已加载，我们只需要获取检查点目录
             config_path = parser.parse_arg("config_path")
             if not config_path:
                 raise ValueError(
-                    f"A config_path is expected when resuming a run. Please specify path to {TRAIN_CONFIG_NAME}"
+                    f"恢复运行时需要 config_path。请指定 {TRAIN_CONFIG_NAME} 的路径"
                 )
             if not Path(config_path).resolve().exists():
                 raise NotADirectoryError(
-                    f"{config_path=} is expected to be a local path. "
-                    "Resuming from the hub is not supported for now."
+                    f"{config_path=} 预期为本地路径。"
+                    "目前不支持从 hub 恢复。"
                 )
             policy_path = Path(config_path).parent
             self.policy.pretrained_path = policy_path
@@ -99,8 +99,8 @@ class TrainPipelineConfig(HubMixin):
 
         if not self.resume and isinstance(self.output_dir, Path) and self.output_dir.is_dir():
             raise FileExistsError(
-                f"Output directory {self.output_dir} already exists and resume is {self.resume}. "
-                f"Please change your output directory so that {self.output_dir} is not overwritten."
+                f"输出目录 {self.output_dir} 已存在且 resume 为 {self.resume}。"
+                f"请更改您的输出目录，以免 {self.output_dir} 被覆盖。"
             )
         elif not self.output_dir:
             now = dt.datetime.now()
@@ -108,17 +108,17 @@ class TrainPipelineConfig(HubMixin):
             self.output_dir = Path("outputs/train") / train_dir
 
         if isinstance(self.dataset.repo_id, list):
-            raise NotImplementedError("LeRobotMultiDataset is not currently implemented.")
+            raise NotImplementedError("LeRobotMultiDataset 当前未实现。")
 
         if not self.use_policy_training_preset and (self.optimizer is None or self.scheduler is None):
-            raise ValueError("Optimizer and Scheduler must be set when the policy presets are not used.")
+            raise ValueError("未使用策略预设时必须设置优化器和调度器。")
         elif self.use_policy_training_preset and not self.resume:
             self.optimizer = self.policy.get_optimizer_preset()
             self.scheduler = self.policy.get_scheduler_preset()
 
     @classmethod
     def __get_path_fields__(cls) -> list[str]:
-        """This enables the parser to load config from the policy using `--policy.path=local/dir`"""
+        """这使解析器能够使用 `--policy.path=local/dir` 从策略加载配置"""
         return ["policy"]
 
     def to_dict(self) -> dict:
@@ -148,7 +148,7 @@ class TrainPipelineConfig(HubMixin):
             if TRAIN_CONFIG_NAME in os.listdir(model_id):
                 config_file = os.path.join(model_id, TRAIN_CONFIG_NAME)
             else:
-                print(f"{TRAIN_CONFIG_NAME} not found in {Path(model_id).resolve()}")
+                print(f"在 {Path(model_id).resolve()} 中未找到 {TRAIN_CONFIG_NAME}")
         elif Path(model_id).is_file():
             config_file = model_id
         else:
@@ -166,7 +166,7 @@ class TrainPipelineConfig(HubMixin):
                 )
             except HfHubHTTPError as e:
                 raise FileNotFoundError(
-                    f"{TRAIN_CONFIG_NAME} not found on the HuggingFace Hub in {model_id}"
+                    f"在 HuggingFace Hub 的 {model_id} 中未找到 {TRAIN_CONFIG_NAME}"
                 ) from e
 
         cli_args = kwargs.pop("cli_args", [])

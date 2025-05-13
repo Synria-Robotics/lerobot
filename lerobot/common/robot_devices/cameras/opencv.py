@@ -164,6 +164,7 @@ def save_images_from_cameras(
             now = time.perf_counter()
 
             for camera in cameras:
+                
                 # If we use async_read when fps is None, the loop will go full speed, and we will endup
                 # saving the same images from the cameras multiple times until the RAM/disk is full.
                 image = camera.read() if fps is None else camera.async_read()

@@ -1,31 +1,31 @@
-This tutorial will explain the training script, how to use it, and particularly how to configure everything needed for the training run.
-> **Note:** The following assume you're running these commands on a machine equipped with a cuda GPU. If you don't have one (or if you're using a Mac), you can add `--policy.device=cpu` (`--policy.device=mps` respectively). However, be advised that the code executes much slower on cpu.
+本教程将解释训练脚本、如何使用它，以及特别是如何配置训练运行所需的一切。
+> **注意：** 以下假设您在配备 CUDA GPU 的机器上运行这些命令。如果您没有（或者如果您使用的是 Mac），您可以分别添加 `--policy.device=cpu` (`--policy.device=mps`)。但是，请注意代码在 CPU 上执行速度要慢得多。
 
 
-## The training script
+## 训练脚本
 
-LeRobot offers a training script at [`lerobot/scripts/train.py`](../lerobot/scripts/train.py). At a high level it does the following:
+LeRobot 在 [`lerobot/scripts/train.py`](../lerobot/scripts/train.py) 提供了一个训练脚本。在高层次上，它执行以下操作：
 
-- Initialize/load a configuration for the following steps using.
-- Instantiates a dataset.
-- (Optional) Instantiates a simulation environment corresponding to that dataset.
-- Instantiates a policy.
-- Runs a standard training loop with forward pass, backward pass, optimization step, and occasional logging, evaluation (of the policy on the environment), and checkpointing.
+- 初始化/加载后续步骤的配置。
+- 实例化一个数据集。
+- （可选）实例化与该数据集对应的模拟环境。
+- 实例化一个策略。
+- 运行标准的训练循环，包括前向传播、反向传播、优化步骤，以及偶尔的日志记录、评估（在环境上评估策略）和检查点保存。
 
-## Overview of the configuration system
+## 配置系统概述
 
-In the training script, the main function `train` expects a `TrainPipelineConfig` object:
+在训练脚本中，主函数 `train` 期望一个 `TrainPipelineConfig` 对象：
 ```python
 # train.py
 @parser.wrap()
 def train(cfg: TrainPipelineConfig):
 ```
 
-You can inspect the `TrainPipelineConfig` defined in [`lerobot/configs/train.py`](../lerobot/configs/train.py) (which is heavily commented and meant to be a reference to understand any option)
+您可以检查在 [`lerobot/configs/train.py`](../lerobot/configs/train.py) 中定义的 `TrainPipelineConfig`（它有大量注释，旨在作为理解任何选项的参考）
 
-When running the script, inputs for the command line are parsed thanks to the `@parser.wrap()` decorator and an instance of this class is automatically generated. Under the hood, this is done with [Draccus](https://github.com/dlwh/draccus) which is a tool dedicated for this purpose. If you're familiar with Hydra, Draccus can similarly load configurations from config files (.json, .yaml) and also override their values through command line inputs. Unlike Hydra, these configurations are pre-defined in the code through dataclasses rather than being defined entirely in config files. This allows for more rigorous serialization/deserialization, typing, and to manipulate configuration as objects directly in the code and not as dictionaries or namespaces (which enables nice features in an IDE such as autocomplete, jump-to-def, etc.)
+运行脚本时，命令行输入会通过 `@parser.wrap()` 装饰器进行解析，并自动生成此类的实例。在底层，这是通过 [Draccus](https://github.com/dlwh/draccus) 完成的，这是一个专门用于此目的的工具。如果您熟悉 Hydra，Draccus 同样可以从配置文件（.json、.yaml）加载配置，并通过命令行输入覆盖它们的值。与 Hydra 不同，这些配置是通过数据类在代码中预定义的，而不是完全在配置文件中定义。这允许更严格的序列化/反序列化、类型化，并直接在代码中将配置作为对象进行操作，而不是作为字典或命名空间（这在 IDE 中启用了诸如自动完成、跳转到定义等良好功能）。
 
-Let's have a look at a simplified example. Amongst other attributes, the training config has the following attributes:
+让我们看一个简化的例子。在其他属性中，训练配置具有以下属性：
 ```python
 @dataclass
 class TrainPipelineConfig:
@@ -33,7 +33,7 @@ class TrainPipelineConfig:
     env: envs.EnvConfig | None = None
     policy: PreTrainedConfig | None = None
 ```
-in which `DatasetConfig` for example is defined as such:
+其中 `DatasetConfig` 例如定义如下：
 ```python
 @dataclass
 class DatasetConfig:
@@ -42,15 +42,15 @@ class DatasetConfig:
     video_backend: str = "pyav"
 ```
 
-This creates a hierarchical relationship where, for example assuming we have a `cfg` instance of `TrainPipelineConfig`, we can access the `repo_id` value with `cfg.dataset.repo_id`.
-From the command line, we can specify this value with using a very similar syntax `--dataset.repo_id=repo/id`.
+这创建了一个层次关系，例如，假设我们有一个 `TrainPipelineConfig` 的 `cfg` 实例，我们可以使用 `cfg.dataset.repo_id` 访问 `repo_id` 的值。
+从命令行，我们可以使用非常相似的语法 `--dataset.repo_id=仓库/id` 来指定此值。
 
-By default, every field takes its default value specified in the dataclass. If a field doesn't have a default value, it needs to be specified either from the command line or from a config file – which path is also given in the command line (more in this below). In the example above, the `dataset` field doesn't have a default value which means it must be specified.
+默认情况下，每个字段都采用数据类中指定的默认值。如果字段没有默认值，则需要从命令行或配置文件中指定——其路径也在命令行中给出（下面会详细介绍）。在上面的示例中，`dataset` 字段没有默认值，这意味着必须指定它。
 
 
-## Specifying values from the CLI
+## 从 CLI 指定值
 
-Let's say that we want to train [Diffusion Policy](../lerobot/common/policies/diffusion) on the [pusht](https://huggingface.co/datasets/lerobot/pusht) dataset, using the [gym_pusht](https://github.com/huggingface/gym-pusht) environment for evaluation. The command to do so would look like this:
+假设我们想在 [pusht](https://huggingface.co/datasets/lerobot/pusht) 数据集上训练 [扩散策略](../lerobot/common/policies/diffusion)，并使用 [gym_pusht](https://github.com/huggingface/gym-pusht) 环境进行评估。执行此操作的命令如下所示：
 ```bash
 python lerobot/scripts/train.py \
     --dataset.repo_id=lerobot/pusht \
@@ -58,12 +58,12 @@ python lerobot/scripts/train.py \
     --env.type=pusht
 ```
 
-Let's break this down:
-- To specify the dataset, we just need to specify its `repo_id` on the hub which is the only required argument in the `DatasetConfig`. The rest of the fields have default values and in this case we are fine with those so we can just add the option `--dataset.repo_id=lerobot/pusht`.
-- To specify the policy, we can just select diffusion policy using `--policy` appended with `.type`. Here, `.type` is a special argument which allows us to select config classes inheriting from `draccus.ChoiceRegistry` and that have been decorated with the `register_subclass()` method. To have a better explanation of this feature, have a look at this [Draccus demo](https://github.com/dlwh/draccus?tab=readme-ov-file#more-flexible-configuration-with-choice-types). In our code, we use this mechanism mainly to select policies, environments, robots, and some other components like optimizers. The policies available to select are located in [lerobot/common/policies](../lerobot/common/policies)
-- Similarly, we select the environment with `--env.type=pusht`. The different environment configs are available in [`lerobot/common/envs/configs.py`](../lerobot/common/envs/configs.py)
+让我们分解一下：
+- 要指定数据集，我们只需要指定它在 hub 上的 `repo_id`，这是 `DatasetConfig` 中唯一必需的参数。其余字段具有默认值，在这种情况下我们对这些默认值感到满意，因此我们只需添加选项 `--dataset.repo_id=lerobot/pusht`。
+- 要指定策略，我们可以使用 `--policy` 附加 `.type` 来选择扩散策略。这里，`.type` 是一个特殊参数，允许我们选择继承自 `draccus.ChoiceRegistry` 并且已使用 `register_subclass()` 方法装饰的配置类。要更好地理解此功能，请查看此 [Draccus 演示](https://github.com/dlwh/draccus?tab=readme-ov-file#more-flexible-configuration-with-choice-types)。在我们的代码中，我们主要使用此机制来选择策略、环境、机器人和一些其他组件，如优化器。可供选择的策略位于 [lerobot/common/policies](../lerobot/common/policies)
+- 类似地，我们使用 `--env.type=pusht` 选择环境。不同的环境配置可在 [`lerobot/common/envs/configs.py`](../lerobot/common/envs/configs.py) 中找到
 
-Let's see another example. Let's say you've been training [ACT](../lerobot/common/policies/act) on [lerobot/aloha_sim_insertion_human](https://huggingface.co/datasets/lerobot/aloha_sim_insertion_human) using the [gym-aloha](https://github.com/huggingface/gym-aloha) environment for evaluation with:
+让我们看另一个例子。假设您一直在 [lerobot/aloha_sim_insertion_human](https://huggingface.co/datasets/lerobot/aloha_sim_insertion_human) 上训练 [ACT](../lerobot/common/policies/act)，并使用 [gym-aloha](https://github.com/huggingface/gym-aloha) 环境进行评估：
 ```bash
 python lerobot/scripts/train.py \
     --policy.type=act \
@@ -71,10 +71,10 @@ python lerobot/scripts/train.py \
     --env.type=aloha \
     --output_dir=outputs/train/act_aloha_insertion
 ```
-> Notice we added `--output_dir` to explicitly tell where to write outputs from this run (checkpoints, training state, configs etc.). This is not mandatory and if you don't specify it, a default directory will be created from the current date and time, env.type and policy.type. This will typically look like `outputs/train/2025-01-24/16-10-05_aloha_act`.
+> 注意我们添加了 `--output_dir` 来明确指定将此运行的输出（检查点、训练状态、配置等）写入何处。这不是强制性的，如果您不指定它，将根据当前日期和时间、env.type 和 policy.type 创建一个默认目录。这通常看起来像 `outputs/train/2025-01-24/16-10-05_aloha_act`。
 
-We now want to train a different policy for aloha on another task. We'll change the dataset and use [lerobot/aloha_sim_transfer_cube_human](https://huggingface.co/datasets/lerobot/aloha_sim_transfer_cube_human) instead. Of course, we also need to change the task of the environment as well to match this other task.
-Looking at the [`AlohaEnv`](../lerobot/common/envs/configs.py) config, the task is `"AlohaInsertion-v0"` by default, which corresponds to the task we trained on in the command above. The [gym-aloha](https://github.com/huggingface/gym-aloha?tab=readme-ov-file#description) environment also has the `AlohaTransferCube-v0` task which corresponds to this other task we want to train on. Putting this together, we can train this new policy on this different task using:
+我们现在想在另一个任务上为 aloha 训练一个不同的策略。我们将更改数据集并使用 [lerobot/aloha_sim_transfer_cube_human](https://huggingface.co/datasets/lerobot/aloha_sim_transfer_cube_human) 代替。当然，我们还需要更改环境的任务以匹配这个其他任务。
+查看 [`AlohaEnv`](../lerobot/common/envs/configs.py) 配置，默认任务是 `"AlohaInsertion-v0"`，这对应于我们在上面命令中训练的任务。[gym-aloha](https://github.com/huggingface/gym-aloha?tab=readme-ov-file#description) 环境也有 `AlohaTransferCube-v0` 任务，这对应于我们想要训练的这个其他任务。综合起来，我们可以使用以下命令在这个不同的任务上训练这个新策略：
 ```bash
 python lerobot/scripts/train.py \
     --policy.type=act \
@@ -84,9 +84,9 @@ python lerobot/scripts/train.py \
     --output_dir=outputs/train/act_aloha_transfer
 ```
 
-## Loading from a config file
+## 从配置文件加载
 
-Now, let's assume that we want to reproduce the run just above. That run has produced a `train_config.json` file in its checkpoints, which serializes the `TrainPipelineConfig` instance it used:
+现在，假设我们想要重现刚才的运行。该运行在其检查点中生成了一个 `train_config.json` 文件，该文件序列化了它使用的 `TrainPipelineConfig` 实例：
 ```json
 {
     "dataset": {
@@ -109,35 +109,35 @@ Now, let's assume that we want to reproduce the run just above. That run has pro
 }
 ```
 
-We can then simply load the config values from this file using:
+然后我们可以简单地使用以下命令从此文件加载配置值：
 ```bash
 python lerobot/scripts/train.py \
     --config_path=outputs/train/act_aloha_transfer/checkpoints/last/pretrained_model/ \
     --output_dir=outputs/train/act_aloha_transfer_2
 ```
-`--config_path` is also a special argument which allows to initialize the config from a local config file. It can point to a directory that contains `train_config.json` or to the config file itself directly.
+`--config_path` 也是一个特殊参数，允许从本地配置文件初始化配置。它可以指向包含 `train_config.json` 的目录，也可以直接指向配置文件本身。
 
-Similarly to Hydra, we can still override some parameters in the CLI if we want to, e.g.:
+与 Hydra 类似，如果我们愿意，我们仍然可以在 CLI 中覆盖一些参数，例如：
 ```bash
 python lerobot/scripts/train.py \
     --config_path=outputs/train/act_aloha_transfer/checkpoints/last/pretrained_model/ \
     --output_dir=outputs/train/act_aloha_transfer_2
     --policy.n_action_steps=80
 ```
-> Note: While `--output_dir` is not required in general, in this case we need to specify it since it will otherwise take the value from the `train_config.json` (which is `outputs/train/act_aloha_transfer`). In order to prevent accidental deletion of previous run checkpoints, we raise an error if you're trying to write in an existing directory. This is not the case when resuming a run, which is what you'll learn next.
+> 注意：虽然 `--output_dir` 通常不是必需的，但在这种情况下我们需要指定它，因为它否则会从 `train_config.json` 中获取值（即 `outputs/train/act_aloha_transfer`）。为了防止意外删除以前运行的检查点，如果您尝试写入现有目录，我们会引发错误。恢复运行时情况并非如此，这是您接下来将学到的内容。
 
-`--config_path` can also accept the repo_id of a repo on the hub that contains a `train_config.json` file, e.g. running:
+`--config_path` 也可以接受 hub 上包含 `train_config.json` 文件的仓库的 repo_id，例如运行：
 ```bash
 python lerobot/scripts/train.py --config_path=lerobot/diffusion_pusht
 ```
-will start a training run with the same configuration used for training [lerobot/diffusion_pusht](https://huggingface.co/lerobot/diffusion_pusht)
+将使用与训练 [lerobot/diffusion_pusht](https://huggingface.co/lerobot/diffusion_pusht) 相同的配置开始训练运行。
 
 
-## Resume training
+## 恢复训练
 
-Being able to resume a training run is important in case it crashed or aborted for any reason. We'll demonstrate how to that here.
+能够恢复训练运行在它因任何原因崩溃或中止的情况下非常重要。我们将在这里演示如何做到这一点。
 
-Let's reuse the command from the previous run and add a few more options:
+让我们重用上一次运行的命令并添加一些更多选项：
 ```bash
 python lerobot/scripts/train.py \
     --policy.type=act \
@@ -149,20 +149,20 @@ python lerobot/scripts/train.py \
     --output_dir=outputs/train/run_resumption
 ```
 
-Here we've taken care to set up the log frequency and checkpointing frequency to low numbers so we can showcase resumption. You should be able to see some logging and have a first checkpoint within 1 minute (depending on hardware). Wait for the first checkpoint to happen, you should see a line that looks like this in your terminal:
+在这里，我们注意将日志频率和检查点频率设置为较低的数字，以便我们可以展示恢复。您应该能够看到一些日志记录并在 1 分钟内（取决于硬件）获得第一个检查点。等待第一个检查点发生，您应该在终端中看到类似这样的一行：
 ```
-INFO 2025-01-24 16:10:56 ts/train.py:263 Checkpoint policy after step 100
+信息 2025-01-24 16:10:56 ts/train.py:263 在步骤 100 后检查点策略
 ```
-Now let's simulate a crash by killing the process (hit `ctrl`+`c`). We can then simply resume this run from the last checkpoint available with:
+现在让我们通过终止进程（按 `ctrl`+`c`）来模拟崩溃。然后我们可以简单地从最后一个可用的检查点恢复此运行：
 ```bash
 python lerobot/scripts/train.py \
     --config_path=outputs/train/run_resumption/checkpoints/last/pretrained_model/ \
     --resume=true
 ```
-You should see from the logging that your training picks up from where it left off.
+您应该从日志记录中看到您的训练从中断的地方继续。
 
-Another reason for which you might want to resume a run is simply to extend training and add more training steps. The number of training steps is set by the option `--steps`, which is 100 000 by default.
-You could double the number of steps of the previous run with:
+您可能想要恢复运行的另一个原因仅仅是扩展训练并添加更多训练步骤。训练步骤的数量由选项 `--steps` 设置，默认为 100 000。
+您可以使用以下命令将上一次运行的步骤数加倍：
 ```bash
 python lerobot/scripts/train.py \
     --config_path=outputs/train/run_resumption/checkpoints/last/pretrained_model/ \
@@ -170,30 +170,30 @@ python lerobot/scripts/train.py \
     --steps=200000
 ```
 
-## Outputs of a run
-In the output directory, there will be a folder called `checkpoints` with the following structure:
+## 运行的输出
+在输出目录中，将有一个名为 `checkpoints` 的文件夹，其结构如下：
 ```bash
 outputs/train/run_resumption/checkpoints
-├── 000100  # checkpoint_dir for training step 100
+├── 000100  # 训练步骤 100 的 checkpoint_dir
 │   ├── pretrained_model/
-│   │   ├── config.json  # policy config
-│   │   ├── model.safetensors  # policy weights
-│   │   └── train_config.json  # train config
+│   │   ├── config.json  # 策略配置
+│   │   ├── model.safetensors  # 策略权重
+│   │   └── train_config.json  # 训练配置
 │   └── training_state/
-│       ├── optimizer_param_groups.json  #  optimizer param groups
-│       ├── optimizer_state.safetensors  # optimizer state
-│       ├── rng_state.safetensors  # rng states
-│       ├── scheduler_state.json  # scheduler state
-│       └── training_step.json  # training step
+│       ├── optimizer_param_groups.json  # 优化器参数组
+│       ├── optimizer_state.safetensors  # 优化器状态
+│       ├── rng_state.safetensors  # rng 状态
+│       ├── scheduler_state.json  # 调度器状态
+│       └── training_step.json  # 训练步骤
 ├── 000200
-└── last -> 000200  # symlink to the last available checkpoint
+└── last -> 000200  # 指向最后一个可用检查点的符号链接
 ```
 
-## Fine-tuning a pre-trained policy
+## 微调预训练策略
 
-In addition to the features currently in Draccus, we've added a special `.path` argument for the policy, which allows to load a policy as you would with `PreTrainedPolicy.from_pretrained()`. In that case, `path` can be a local directory that contains a checkpoint or a repo_id pointing to a pretrained policy on the hub.
+除了 Draccus 中当前的功能外，我们还为策略添加了一个特殊的 `.path` 参数，它允许您像使用 `PreTrainedPolicy.from_pretrained()` 一样加载策略。在这种情况下，`path` 可以是包含检查点的本地目录，也可以是指向 hub 上预训练策略的 repo_id。
 
-For example, we could fine-tune a [policy pre-trained on the aloha transfer task](https://huggingface.co/lerobot/act_aloha_sim_transfer_cube_human) on the aloha insertion task. We can achieve this with:
+例如，我们可以将在 aloha 传输任务上预训练的[策略](https://huggingface.co/lerobot/act_aloha_sim_transfer_cube_human)微调到 aloha 插入任务上。我们可以通过以下方式实现：
 ```bash
 python lerobot/scripts/train.py \
     --policy.path=lerobot/act_aloha_sim_transfer_cube_human \
@@ -202,65 +202,65 @@ python lerobot/scripts/train.py \
     --env.task=AlohaInsertion-v0
 ```
 
-When doing so, keep in mind that the features of the fine-tuning dataset would have to match the input/output features of the pretrained policy.
+这样做时，请记住微调数据集的特征必须与预训练策略的输入/输出特征相匹配。
 
-## Typical logs and metrics
+## 典型的日志和指标
 
-When you start the training process, you will first see your full configuration being printed in the terminal. You can check it to make sure that you configured your run correctly. The final configuration will also be saved with the checkpoint.
+当您开始训练过程时，您将首先在终端中看到打印出的完整配置。您可以检查它以确保您正确配置了运行。最终配置也将与检查点一起保存。
 
-After that, you will see training log like this one:
+之后，您将看到如下训练日志：
 ```
-INFO 2024-08-14 13:35:12 ts/train.py:192 step:0 smpl:64 ep:1 epch:0.00 loss:1.112 grdn:15.387 lr:2.0e-07 updt_s:1.738 data_s:4.774
+信息 2024-08-14 13:35:12 ts/train.py:192 步数:0 样本:64 回合:1 轮次:0.00 损失:1.112 梯度范数:15.387 学习率:2.0e-07 更新秒数:1.738 数据秒数:4.774
 ```
-or evaluation log:
+或评估日志：
 ```
-INFO 2024-08-14 13:38:45 ts/train.py:226 step:100 smpl:6K ep:52 epch:0.25 ∑rwrd:20.693 success:0.0% eval_s:120.266
+信息 2024-08-14 13:38:45 ts/train.py:226 步数:100 样本:6K 回合:52 轮次:0.25 ∑奖励:20.693 成功率:0.0% 评估秒数:120.266
 ```
 
-These logs will also be saved in wandb if `wandb.enable` is set to `true`. Here are the meaning of some abbreviations:
-- `smpl`: number of samples seen during training.
-- `ep`: number of episodes seen during training. An episode contains multiple samples in a complete manipulation task.
-- `epch`: number of time all unique samples are seen (epoch).
-- `grdn`: gradient norm.
-- `∑rwrd`: compute the sum of rewards in every evaluation episode and then take an average of them.
-- `success`: average success rate of eval episodes. Reward and success are usually different except for the sparsing reward setting, where reward=1 only when the task is completed successfully.
-- `eval_s`: time to evaluate the policy in the environment, in second.
-- `updt_s`: time to update the network parameters, in second.
-- `data_s`: time to load a batch of data, in second.
+如果 `wandb.enable` 设置为 `true`，这些日志也将保存在 wandb 中。以下是一些缩写的含义：
+- `smpl`：训练期间看到的样本数。
+- `ep`：训练期间看到的回合数。一个回合包含一个完整操作任务中的多个样本。
+- `epch`：所有唯一样本被看到的次数（轮次）。
+- `grdn`：梯度范数。
+- `∑rwrd`：计算每个评估回合中的奖励总和，然后取它们的平均值。
+- `success`：评估回合的平均成功率。奖励和成功率通常不同，除非在稀疏奖励设置中，其中仅当任务成功完成时 reward=1。
+- `eval_s`：在环境中评估策略的时间，以秒为单位。
+- `updt_s`：更新网络参数的时间，以秒为单位。
+- `data_s`：加载一批数据的时间，以秒为单位。
 
-Some metrics are useful for initial performance profiling. For example, if you find the current GPU utilization is low via the `nvidia-smi` command and `data_s` sometimes is too high, you may need to modify batch size or number of dataloading workers to accelerate dataloading. We also recommend [pytorch profiler](https://github.com/huggingface/lerobot?tab=readme-ov-file#improve-your-code-with-profiling) for detailed performance probing.
+一些指标对于初始性能分析很有用。例如，如果您通过 `nvidia-smi` 命令发现当前 GPU 利用率较低，并且 `data_s` 有时过高，您可能需要修改批处理大小或数据加载工作进程数以加速数据加载。我们还推荐使用 [pytorch profiler](https://github.com/huggingface/lerobot?tab=readme-ov-file#improve-your-code-with-profiling) 进行详细的性能探测。
 
-## In short
+## 简而言之
 
-We'll summarize here the main use cases to remember from this tutorial.
+我们将在这里总结本教程中要记住的主要用例。
 
-#### Train a policy from scratch – CLI
+#### 从头开始训练策略 – CLI
 ```bash
 python lerobot/scripts/train.py \
-    --policy.type=act \  # <- select 'act' policy
-    --env.type=pusht \  # <- select 'pusht' environment
-    --dataset.repo_id=lerobot/pusht  # <- train on this dataset
+    --policy.type=act \  # <- 选择 'act' 策略
+    --env.type=pusht \  # <- 选择 'pusht' 环境
+    --dataset.repo_id=lerobot/pusht  # <- 在此数据集上训练
 ```
 
-#### Train a policy from scratch - config file + CLI
+#### 从头开始训练策略 - 配置文件 + CLI
 ```bash
 python lerobot/scripts/train.py \
-    --config_path=path/to/pretrained_model \  # <- can also be a repo_id
-    --policy.n_action_steps=80  # <- you may still override values
+    --config_path=path/to/pretrained_model \  # <- 也可以是 repo_id
+    --policy.n_action_steps=80  # <- 您仍然可以覆盖值
 ```
 
-#### Resume/continue a training run
+#### 恢复/继续训练运行
 ```bash
 python lerobot/scripts/train.py \
     --config_path=checkpoint/pretrained_model/ \
     --resume=true \
-    --steps=200000  # <- you can change some training parameters
+    --steps=200000  # <- 您可以更改一些训练参数
 ```
 
-#### Fine-tuning
+#### 微调
 ```bash
 python lerobot/scripts/train.py \
-    --policy.path=lerobot/act_aloha_sim_transfer_cube_human \  # <- can also be a local path to a checkpoint
+    --policy.path=lerobot/act_aloha_sim_transfer_cube_human \  # <- 也可以是检查点的本地路径
     --dataset.repo_id=lerobot/aloha_sim_insertion_human \
     --env.type=aloha \
     --env.task=AlohaInsertion-v0
@@ -268,7 +268,7 @@ python lerobot/scripts/train.py \
 
 ---
 
-Now that you know the basics of how to train a policy, you might want to know how to apply this knowledge to actual robots, or how to record your own datasets and train policies on your specific task?
-If that's the case, head over to the next tutorial [`7_get_started_with_real_robot.md`](./7_get_started_with_real_robot.md).
+现在您已经了解了如何训练策略的基础知识，您可能想知道如何将这些知识应用于实际机器人，或者如何记录您自己的数据集并在您的特定任务上训练策略？
+如果是这样，请转到下一个教程 [`7_get_started_with_real_robot.md`](./7_get_started_with_real_robot.md)。
 
-Or in the meantime, happy training! 🤗
+或者在此期间，祝您训练愉快！ 🤗

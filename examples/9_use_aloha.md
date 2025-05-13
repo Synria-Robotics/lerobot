@@ -1,15 +1,15 @@
-This tutorial explains how to use [Aloha and Aloha 2 stationary](https://www.trossenrobotics.com/aloha-stationary) with LeRobot.
+本教程介绍了如何在 LeRobot 中使用 [Aloha 和 Aloha 2 固定式机器人](https://www.trossenrobotics.com/aloha-stationary)。
 
-## Setup
+## 设置
 
-Follow the [documentation from Trossen Robotics](https://docs.trossenrobotics.com/aloha_docs/2.0/getting_started/stationary/hardware_setup.html) for setting up the hardware and plugging the 4 arms and 4 cameras to your computer.
+请遵循 [Trossen Robotics 的文档](https://docs.trossenrobotics.com/aloha_docs/2.0/getting_started/stationary/hardware_setup.html) 来设置硬件并将 4 个机械臂和 4 个摄像头连接到您的计算机。
 
 
-## Install LeRobot
+## 安装 LeRobot
 
-On your computer:
+在您的计算机上：
 
-1. [Install Miniconda](https://docs.anaconda.com/miniconda/#quick-command-line-install):
+1. [安装 Miniconda](https://docs.anaconda.com/miniconda/#quick-command-line-install)：
 ```bash
 mkdir -p ~/miniconda3
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
@@ -18,38 +18,38 @@ rm ~/miniconda3/miniconda.sh
 ~/miniconda3/bin/conda init bash
 ```
 
-2. Restart shell or `source ~/.bashrc`
+2. 重启 shell 或运行 `source ~/.bashrc`
 
-3. Create and activate a fresh conda environment for lerobot
+3. 为 lerobot 创建并激活一个新的 conda 环境
 ```bash
 conda create -y -n lerobot python=3.10 && conda activate lerobot
 ```
 
-4. Clone LeRobot:
+4. 克隆 LeRobot：
 ```bash
 git clone https://github.com/huggingface/lerobot.git ~/lerobot
 ```
 
-5. When using `miniconda`, install `ffmpeg` in your environment:
+5. 当使用 `miniconda` 时，在您的环境中安装 `ffmpeg`：
 ```bash
 conda install ffmpeg -c conda-forge
 ```
 
-6. Install LeRobot with dependencies for the Aloha motors (dynamixel) and cameras (intelrealsense):
+6. 安装 LeRobot 以及 Aloha 电机 (dynamixel) 和摄像头 (intelrealsense) 的依赖项：
 ```bash
 cd ~/lerobot && pip install -e ".[dynamixel, intelrealsense]"
 ```
 
-## Teleoperate
+## 遥操作
 
-**/!\ FOR SAFETY, READ THIS /!\**
-Teleoperation consists in manually operating the leader arms to move the follower arms. Importantly:
-1. Make sure your leader arms are in the same position as the follower arms, so that the follower arms don't move too fast to match the leader arms,
-2. Our code assumes that your robot has been assembled following Trossen Robotics instructions. This allows us to skip calibration, as we use the pre-defined calibration files in `.cache/calibration/aloha_default`. If you replace a motor, make sure you follow the exact instructions from Trossen Robotics.
+**/!\ 为了安全，请阅读此内容 /!\**
+遥操作是指手动操作主机械臂来移动从机械臂。重要的是：
+1. 确保您的主机械臂与从机械臂处于相同的位置，这样从机械臂就不会移动过快以匹配主机械臂。
+2. 我们的代码假定您的机器人是按照 Trossen Robotics 的说明组装的。这使我们可以跳过校准，因为我们使用了 `.cache/calibration/aloha_default` 中预定义的校准文件。如果您更换了电机，请确保遵循 Trossen Robotics 的确切说明。
 
-By running the following code, you can start your first **SAFE** teleoperation:
+通过运行以下代码，您可以开始您的第一次 **安全** 遥操作：
 
-> **NOTE:** To visualize the data, enable `--control.display_data=true`. This streams the data using `rerun`.
+> **注意：** 要可视化数据，请启用 `--control.display_data=true`。这将使用 `rerun` 流式传输数据。
 
 ```bash
 python lerobot/scripts/control_robot.py \
@@ -58,7 +58,7 @@ python lerobot/scripts/control_robot.py \
   --control.type=teleoperate
 ```
 
-By adding `--robot.max_relative_target=5`, we override the default value for `max_relative_target` defined in [`AlohaRobotConfig`](lerobot/common/robot_devices/robots/configs.py). It is expected to be `5` to limit the magnitude of the movement for more safety, but the teleoperation won't be smooth. When you feel confident, you can disable this limit by adding `--robot.max_relative_target=null` to the command line:
+通过添加 `--robot.max_relative_target=5`，我们覆盖了 [`AlohaRobotConfig`](lerobot/common/robot_devices/robots/configs.py) 中定义的 `max_relative_target` 的默认值。为了更安全，预期值为 `5` 以限制移动幅度，但遥操作不会很平滑。当您感到有信心时，可以通过在命令行中添加 `--robot.max_relative_target=null` 来禁用此限制：
 ```bash
 python lerobot/scripts/control_robot.py \
   --robot.type=aloha \
@@ -66,29 +66,29 @@ python lerobot/scripts/control_robot.py \
   --control.type=teleoperate
 ```
 
-## Record a dataset
+## 录制数据集
 
-Once you're familiar with teleoperation, you can record your first dataset with Aloha.
+熟悉遥操作后，您可以使用 Aloha 录制您的第一个数据集。
 
-If you want to use the Hugging Face hub features for uploading your dataset and you haven't previously done it, make sure you've logged in using a write-access token, which can be generated from the [Hugging Face settings](https://huggingface.co/settings/tokens):
+如果您想使用 Hugging Face Hub 的功能上传数据集，并且之前没有这样做过，请确保您已使用写访问令牌登录，该令牌可以从 [Hugging Face 设置](https://huggingface.co/settings/tokens) 生成：
 ```bash
 huggingface-cli login --token ${HUGGINGFACE_TOKEN} --add-to-git-credential
 ```
 
-Store your Hugging Face repository name in a variable to run these commands:
+将您的 Hugging Face 仓库名称存储在一个变量中以运行这些命令：
 ```bash
 HF_USER=$(huggingface-cli whoami | head -n 1)
 echo $HF_USER
 ```
 
-Record 2 episodes and upload your dataset to the hub:
+录制 2 个片段并将您的数据集上传到 Hub：
 ```bash
 python lerobot/scripts/control_robot.py \
   --robot.type=aloha \
   --robot.max_relative_target=null \
   --control.type=record \
   --control.fps=30 \
-  --control.single_task="Grasp a lego block and put it in the bin." \
+  --control.single_task="抓住一个乐高积木并将其放入箱子中。" \
   --control.repo_id=${HF_USER}/aloha_test \
   --control.tags='["tutorial"]' \
   --control.warmup_time_s=5 \
@@ -98,25 +98,25 @@ python lerobot/scripts/control_robot.py \
   --control.push_to_hub=true
 ```
 
-## Visualize a dataset
+## 可视化数据集
 
-If you uploaded your dataset to the hub with `--control.push_to_hub=true`, you can [visualize your dataset online](https://huggingface.co/spaces/lerobot/visualize_dataset) by copy pasting your repo id given by:
+如果您使用 `--control.push_to_hub=true` 将数据集上传到 Hub，您可以通过复制粘贴您的仓库 ID [在线可视化您的数据集](https://huggingface.co/spaces/lerobot/visualize_dataset)，仓库 ID 由以下命令给出：
 ```bash
 echo ${HF_USER}/aloha_test
 ```
 
-If you didn't upload with `--control.push_to_hub=false`, you can also visualize it locally with:
+如果您没有使用 `--control.push_to_hub=false` 上传，您也可以在本地使用以下命令进行可视化：
 ```bash
 python lerobot/scripts/visualize_dataset_html.py \
   --repo-id ${HF_USER}/aloha_test
 ```
 
-## Replay an episode
+## 回放片段
 
-**/!\ FOR SAFETY, READ THIS /!\**
-Replay consists in automatically replaying the sequence of actions (i.e. goal positions for your motors) recorded in a given dataset episode. Make sure the current initial position of your robot is similar to the one in your episode, so that your follower arms don't move too fast to go to the first goal positions. For safety, you might want to add `--robot.max_relative_target=5` to your command line as explained above.
+**/!\ 为了安全，请阅读此内容 /!\**
+回放是指自动重播在给定数据集片段中记录的动作序列（即电机的目标位置）。确保机器人当前的初始位置与片段中的初始位置相似，这样您的从机械臂就不会移动过快以到达第一个目标位置。为了安全起见，您可能希望如上所述在命令行中添加 `--robot.max_relative_target=5`。
 
-Now try to replay the first episode on your robot:
+现在尝试在您的机器人上回放第一个片段：
 ```bash
 python lerobot/scripts/control_robot.py \
   --robot.type=aloha \
@@ -127,9 +127,9 @@ python lerobot/scripts/control_robot.py \
   --control.episode=0
 ```
 
-## Train a policy
+## 训练策略
 
-To train a policy to control your robot, use the [`python lerobot/scripts/train.py`](../lerobot/scripts/train.py) script. A few arguments are required. Here is an example command:
+要训练控制机器人的策略，请使用 [`python lerobot/scripts/train.py`](../lerobot/scripts/train.py) 脚本。需要一些参数。这是一个示例命令：
 ```bash
 python lerobot/scripts/train.py \
   --dataset.repo_id=${HF_USER}/aloha_test \
@@ -140,25 +140,25 @@ python lerobot/scripts/train.py \
   --wandb.enable=true
 ```
 
-Let's explain it:
-1. We provided the dataset as argument with `--dataset.repo_id=${HF_USER}/aloha_test`.
-2. We provided the policy with `policy.type=act`. This loads configurations from [`configuration_act.py`](../lerobot/common/policies/act/configuration_act.py). Importantly, this policy will automatically adapt to the number of motor sates, motor actions and cameras of your robot (e.g. `laptop` and `phone`) which have been saved in your dataset.
-4. We provided `policy.device=cuda` since we are training on a Nvidia GPU, but you could use `policy.device=mps` to train on Apple silicon.
-5. We provided `wandb.enable=true` to use [Weights and Biases](https://docs.wandb.ai/quickstart) for visualizing training plots. This is optional but if you use it, make sure you are logged in by running `wandb login`.
+让我们解释一下：
+1. 我们使用 `--dataset.repo_id=${HF_USER}/aloha_test` 提供了数据集作为参数。
+2. 我们使用 `policy.type=act` 提供了策略。这将从 [`configuration_act.py`](../lerobot/common/policies/act/configuration_act.py) 加载配置。重要的是，此策略将自动适应已保存在数据集中的机器人电机状态、电机动作和摄像头的数量（例如 `laptop` 和 `phone`）。
+4. 我们提供了 `policy.device=cuda`，因为我们在 Nvidia GPU 上进行训练，但您可以使用 `policy.device=mps` 在 Apple 芯片上进行训练。
+5. 我们提供了 `wandb.enable=true` 以使用 [Weights and Biases](https://docs.wandb.ai/quickstart) 来可视化训练图。这是可选的，但如果您使用它，请确保通过运行 `wandb login` 登录。
 
-For more information on the `train` script see the previous tutorial: [`examples/4_train_policy_with_script.md`](../examples/4_train_policy_with_script.md)
+有关 `train` 脚本的更多信息，请参阅上一个教程：[`examples/4_train_policy_with_script.md`](../examples/4_train_policy_with_script.md)
 
-Training should take several hours. You will find checkpoints in `outputs/train/act_aloha_test/checkpoints`.
+训练应该需要几个小时。您将在 `outputs/train/act_aloha_test/checkpoints` 中找到检查点。
 
-## Evaluate your policy
+## 评估您的策略
 
-You can use the `record` function from [`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py) but with a policy checkpoint as input. For instance, run this command to record 10 evaluation episodes:
+您可以使用 [`lerobot/scripts/control_robot.py`](../lerobot/scripts/control_robot.py) 中的 `record` 函数，但需要输入策略检查点。例如，运行此命令以录制 10 个评估片段：
 ```bash
 python lerobot/scripts/control_robot.py \
   --robot.type=aloha \
   --control.type=record \
   --control.fps=30 \
-  --control.single_task="Grasp a lego block and put it in the bin." \
+  --control.single_task="抓住一个乐高积木并将其放入箱子中。" \
   --control.repo_id=${HF_USER}/eval_act_aloha_test \
   --control.tags='["tutorial"]' \
   --control.warmup_time_s=5 \
@@ -170,13 +170,13 @@ python lerobot/scripts/control_robot.py \
   --control.num_image_writer_processes=1
 ```
 
-As you can see, it's almost the same command as previously used to record your training dataset. Two things changed:
-1. There is an additional `--control.policy.path` argument which indicates the path to your policy checkpoint with  (e.g. `outputs/train/eval_act_aloha_test/checkpoints/last/pretrained_model`). You can also use the model repository if you uploaded a model checkpoint to the hub (e.g. `${HF_USER}/act_aloha_test`).
-2. The name of dataset begins by `eval` to reflect that you are running inference (e.g. `${HF_USER}/eval_act_aloha_test`).
-3. We use `--control.num_image_writer_processes=1` instead of the default value (`0`). On our computer, using a dedicated process to write images from the 4 cameras on disk allows to reach constant 30 fps during inference. Feel free to explore different values for `--control.num_image_writer_processes`.
+如您所见，这与之前用于录制训练数据集的命令几乎相同。有两点不同：
+1. 有一个额外的 `--control.policy.path` 参数，指示您的策略检查点的路径（例如 `outputs/train/eval_act_aloha_test/checkpoints/last/pretrained_model`）。如果您已将模型检查点上传到 Hub，也可以使用模型仓库（例如 `${HF_USER}/act_aloha_test`）。
+2. 数据集的名称以 `eval` 开头，以反映您正在运行推理（例如 `${HF_USER}/eval_act_aloha_test`）。
+3. 我们使用 `--control.num_image_writer_processes=1` 而不是默认值 (`0`)。在我们的计算机上，使用专用进程将 4 个摄像头的图像写入磁盘，可以在推理期间达到恒定的 30 fps。您可以随意探索 `--control.num_image_writer_processes` 的不同值。
 
-## More
+## 更多
 
-Follow this [previous tutorial](https://github.com/huggingface/lerobot/blob/main/examples/7_get_started_with_real_robot.md#4-train-a-policy-on-your-data) for a more in-depth explanation.
+请参阅此[之前的教程](https://github.com/huggingface/lerobot/blob/main/examples/7_get_started_with_real_robot.md#4-train-a-policy-on-your-data)以获取更深入的解释。
 
-If you have any question or need help, please reach out on Discord in the channel `#aloha-arm`.
+如果您有任何问题或需要帮助，请在 Discord 的 `#aloha-arm` 频道中联系我们。

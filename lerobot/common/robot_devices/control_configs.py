@@ -47,49 +47,49 @@ class TeleoperateControlConfig(ControlConfig):
 @ControlConfig.register_subclass("record")
 @dataclass
 class RecordControlConfig(ControlConfig):
-    # Dataset identifier. By convention it should match '{hf_username}/{dataset_name}' (e.g. `lerobot/test`).
+    # 数据集标识符。按照惯例，应与'{hf_username}/{dataset_name}'匹配（例如：`lerobot/test`）。
     repo_id: str
-    # A short but accurate description of the task performed during the recording (e.g. "Pick the Lego block and drop it in the box on the right.")
+    # 对录制过程中执行任务的简短但准确的描述（例如："拿起乐高积木并将其放入右侧的盒子中。"）
     single_task: str
-    # Root directory where the dataset will be stored (e.g. 'dataset/path').
+    # 数据集将被存储的根目录（例如：'dataset/path'）。
     root: str | Path | None = None
     policy: PreTrainedConfig | None = None
-    # Limit the frames per second. By default, uses the policy fps.
+    # 限制每秒帧数。默认情况下，使用策略的fps。
     fps: int | None = None
-    # Number of seconds before starting data collection. It allows the robot devices to warmup and synchronize.
+    # 开始数据收集前的预热秒数。它允许机器人设备预热和同步。
     warmup_time_s: int | float = 10
-    # Number of seconds for data recording for each episode.
+    # 每个回合的数据记录秒数。
     episode_time_s: int | float = 60
-    # Number of seconds for resetting the environment after each episode.
+    # 每个回合后重置环境的秒数。
     reset_time_s: int | float = 60
-    # Number of episodes to record.
+    # 要记录的回合数。
     num_episodes: int = 50
-    # Encode frames in the dataset into video
+    # 将数据集中的帧编码为视频
     video: bool = True
-    # Upload dataset to Hugging Face hub.
+    # 上传数据集到Hugging Face hub。
     push_to_hub: bool = True
-    # Upload on private repository on the Hugging Face hub.
+    # 上传到Hugging Face hub上的私有仓库。
     private: bool = False
-    # Add tags to your dataset on the hub.
+    # 在hub上为您的数据集添加标签。
     tags: list[str] | None = None
-    # Number of subprocesses handling the saving of frames as PNG. Set to 0 to use threads only;
-    # set to ≥1 to use subprocesses, each using threads to write images. The best number of processes
-    # and threads depends on your system. We recommend 4 threads per camera with 0 processes.
-    # If fps is unstable, adjust the thread count. If still unstable, try using 1 or more subprocesses.
+    # 处理将帧保存为PNG的子进程数量。设置为0仅使用线程；
+    # 设置为≥1使用子进程，每个子进程使用线程写入图像。最佳的进程
+    # 和线程数量取决于您的系统。我们推荐每个摄像头使用4个线程，0个进程。
+    # 如果fps不稳定，调整线程数量。如果仍然不稳定，尝试使用1个或更多子进程。
     num_image_writer_processes: int = 0
-    # Number of threads writing the frames as png images on disk, per camera.
-    # Too many threads might cause unstable teleoperation fps due to main thread being blocked.
-    # Not enough threads might cause low camera fps.
+    # 每个摄像头在磁盘上将帧写为png图像的线程数量。
+    # 过多的线程可能会导致远程操作fps不稳定，因为主线程被阻塞。
+    # 线程不足可能会导致摄像头fps较低。
     num_image_writer_threads_per_camera: int = 4
-    # Display all cameras on screen
+    # 在屏幕上显示所有摄像头
     display_data: bool = False
-    # Use vocal synthesis to read events.
+    # 使用语音合成读取事件。
     play_sounds: bool = True
-    # Resume recording on an existing dataset.
+    # 在现有数据集上继续记录。
     resume: bool = False
 
     def __post_init__(self):
-        # HACK: We parse again the cli args here to get the pretrained path if there was one.
+        # HACK：在这里我们再次解析cli参数以获取预训练路径（如果存在的话）。
         policy_path = parser.get_path_arg("control.policy")
         if policy_path:
             cli_overrides = parser.get_cli_overrides("control.policy")

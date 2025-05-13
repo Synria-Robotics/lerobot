@@ -611,3 +611,36 @@ class LeKiwiRobotConfig(RobotConfig):
     )
 
     mock: bool = False
+
+
+@RobotConfig.register_subclass("alicia_duo")
+@dataclass
+class AliciaDuoRobotConfig(RobotConfig):
+    """Alicia Duo机械臂的配置类"""
+    
+    # 串口设置
+    port: str = ""  # 留空则自动搜索
+    baudrate: int = 921600
+    debug_mode: bool = False
+    
+    # 摄像头配置
+    cameras: dict[str, CameraConfig] = field(default_factory=lambda: {
+            "front": OpenCVCameraConfig(
+                camera_index="/dev/video0", fps=30, width=640, height=480, rotation=90
+            ),
+            "wrist": OpenCVCameraConfig(
+                camera_index="/dev/video2", fps=30, width=640, height=480, rotation=180
+            ),})
+    
+    # 安全控制参数
+    max_relative_target: list[float] | float | None = None  # 默认限制每次移动0.1弧度（约5.7度）
+    
+    # 模拟模式
+    mock: bool = False
+    
+    def __post_init__(self):
+        if self.mock:
+            for cam in self.cameras.values():
+                if not cam.mock:
+                    cam.mock = True
+

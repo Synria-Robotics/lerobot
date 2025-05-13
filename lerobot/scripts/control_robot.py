@@ -246,7 +246,7 @@ def record(
     robot: Robot,
     cfg: RecordControlConfig,
 ) -> LeRobotDataset:
-    # TODO(rcadene): Add option to record logs
+    # TODO(rcadene): 添加记录日志的选项
     if cfg.resume:
         dataset = LeRobotDataset(
             cfg.repo_id,
@@ -259,7 +259,7 @@ def record(
             )
         sanity_check_dataset_robot_compatibility(dataset, robot, cfg.fps, cfg.video)
     else:
-        # Create empty dataset or load existing saved episodes
+        # 创建空数据集或加载现有保存的片段
         sanity_check_dataset_name(cfg.repo_id, cfg.policy)
         dataset = LeRobotDataset.create(
             cfg.repo_id,
@@ -271,20 +271,23 @@ def record(
             image_writer_threads=cfg.num_image_writer_threads_per_camera * len(robot.cameras),
         )
 
-    # Load pretrained policy
+    # 加载预训练策略
     policy = None if cfg.policy is None else make_policy(cfg.policy, ds_meta=dataset.meta)
 
     if not robot.is_connected:
         robot.connect()
 
+    # 监听键盘
     listener, events = init_keyboard_listener()
 
-    # Execute a few seconds without recording to:
-    # 1. teleoperate the robot to move it in starting position if no policy provided,
-    # 2. give times to the robot devices to connect and start synchronizing,
-    # 3. place the cameras windows on screen
+    # 执行几秒钟不记录，目的：
+    # 1. 如果没有提供策略，远程操作机器人将其移动到起始位置
+    # 2. 给机器人设备时间连接并开始同步
+    # 3. 在屏幕上放置摄像头窗口
     enable_teleoperation = policy is None
-    log_say("Warmup record", cfg.play_sounds)
+    log_say("预热记录", cfg.play_sounds)
+    print("预热记录")
+
     warmup_record(robot, events, enable_teleoperation, cfg.warmup_time_s, cfg.display_data, cfg.fps)
 
     if has_method(robot, "teleop_safety_stop"):
@@ -295,7 +298,8 @@ def record(
         if recorded_episodes >= cfg.num_episodes:
             break
 
-        log_say(f"Recording episode {dataset.num_episodes}", cfg.play_sounds)
+        log_say(f"正在记录片段 {dataset.num_episodes}", cfg.play_sounds)
+        print("正在记录片段:", dataset.num_episodes)
         record_episode(
             robot=robot,
             dataset=dataset,
@@ -307,18 +311,21 @@ def record(
             single_task=cfg.single_task,
         )
 
-        # Execute a few seconds without recording to give time to manually reset the environment
-        # Current code logic doesn't allow to teleoperate during this time.
-        # TODO(rcadene): add an option to enable teleoperation during reset
-        # Skip reset for the last episode to be recorded
+        # 执行几秒钟不记录，给手动重置环境的时间
+        # 当前代码逻辑不允许在此期间进行远程操作
+        # TODO(rcadene): 添加在重置期间启用远程操作的选项
+        # 跳过对最后一个要录制的片段的重置
         if not events["stop_recording"] and (
             (recorded_episodes < cfg.num_episodes - 1) or events["rerecord_episode"]
         ):
-            log_say("Reset the environment", cfg.play_sounds)
+            log_say("重置环境", cfg.play_sounds)
+            print("正在重置环境...")
             reset_environment(robot, events, cfg.reset_time_s, cfg.fps)
+            print("环境已重置...")
 
         if events["rerecord_episode"]:
-            log_say("Re-record episode", cfg.play_sounds)
+            log_say("重新记录片段", cfg.play_sounds)
+            print("正在重新记录片段...")
             events["rerecord_episode"] = False
             events["exit_early"] = False
             dataset.clear_episode_buffer()
@@ -330,13 +337,15 @@ def record(
         if events["stop_recording"]:
             break
 
-    log_say("Stop recording", cfg.play_sounds, blocking=True)
+    log_say("停止记录", cfg.play_sounds, blocking=True)
+    print("记录已停止。")
     stop_recording(robot, listener, cfg.display_data)
 
     if cfg.push_to_hub:
         dataset.push_to_hub(tags=cfg.tags, private=cfg.private)
 
-    log_say("Exiting", cfg.play_sounds)
+    log_say("退出中", cfg.play_sounds)
+    print("退出中")
     return dataset
 
 
@@ -405,6 +414,8 @@ def _init_rerun(control_config: ControlConfig, session_name: str = "lerobot_cont
 @parser.wrap()
 def control_robot(cfg: ControlPipelineConfig):
     init_logging()
+    logging.getLogger("lerobot.common.robot_devices.control_utils").setLevel(logging.WARNING)
+
     logging.info(pformat(asdict(cfg)))
 
     robot = make_robot_from_config(cfg.robot)
