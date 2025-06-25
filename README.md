@@ -63,8 +63,8 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     cd /path/to/your/projects_directory
 
     # 克隆 LeRobot 仓库
-    git clone https://github.com/huggingface/lerobot.git
-
+    git clone https://github.com/Xuanya-Robotics/lerobot.git
+      
     # 进入 LeRobot 文件夹
     cd lerobot
     ```
