@@ -63,7 +63,7 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     cd /path/to/your/projects_directory
 
     # 克隆 LeRobot 仓库
-    git clone https://github.com/huggingface/lerobot.git
+    git clone https://github.com/Xuanya-Robotics/lerobot.git
 
     # 进入 LeRobot 文件夹
     cd lerobot
@@ -222,6 +222,7 @@ python lerobot/scripts/control_robot.py \
 **示例命令 (带一个前置摄像头):**
 如果您已在 `lerobot/common/robot_devices/robots/configs.py` 中的 `AliciaDuoRobotConfig` 配置了摄像头，则运行数据收集脚本时，无需在命令行中再次指定摄像头参数。脚本会自动加载 `configs.py` 中的设置。
 
+**一套遥操作套件**（一个操作臂一个示教臂）
 ```bash
 python lerobot/scripts/control_robot.py \
     --robot.type=alicia_duo \
@@ -231,10 +232,27 @@ python lerobot/scripts/control_robot.py \
     --control.root=/home/YOUR_USERNAME/lerobot_datasets/alicia_visual_demo \
     --control.repo_id=YOUR_HF_USERNAME/alicia_visual_demo_dataset \
     --control.num_episodes=5 \
-    --control.warmup_time_s=5 \
-    --control.episode_time_s=60 \
+    --control.warmup_time_s=10 \
+    --control.episode_time_s=18 \
     --control.reset_time_s=20 \
     --control.push_to_hub=false
+```
+
+**两套遥操作套件**（两个操作臂两个示教臂）
+```bash
+python lerobot/scripts/control_robot.py \
+    --robot.type=alicia_duo_dual \
+    --control.type=record \
+    --control.fps=30 \
+    --control.single_task="演示如何用Alicia Duo机械臂移动一个方块（带视觉）" \
+    --control.root=/home/YOUR_USERNAME/lerobot_datasets/alicia_visual_demo  \
+    --control.repo_id=ubuntu/alicia_visual_demo_dataset \
+    --control.num_episodes=10 \
+    --control.warmup_time_s=10 \
+    --control.episode_time_s=18 \
+    --control.reset_time_s=8 \
+    --control.push_to_hub=false \
+    --control.video=false
 ```
 
 **数据收集中:**
@@ -253,6 +271,7 @@ python lerobot/scripts/control_robot.py \
 数据收集完成后，您可以在您指定的 `--control.root` 路径下找到生成的数据集文件夹。
 
 ---
+
 
 ## 7. 常见问题与故障排除
 
@@ -282,46 +301,4 @@ python lerobot/scripts/control_robot.py \
 
 ---
 
-## 8. 可视化已收集的数据集
 
-LeRobot 提供了一个脚本，可以将您收集到的数据集（包括图像和状态数据）生成一个HTML文件，方便在浏览器中查看。
-
-**命令格式:**
-
-```bash
-python lerobot/scripts/visualize_dataset_html.py \
-    --repo-id <数据集的本地标识符或Hugging Face Hub上的ID> \
-    --root <包含数据集的本地根目录> \
-    [其他可选参数]
-```
-
-**参数说明:**
-
-*   `--repo-id`:
-    *   如果您的数据集在本地，并且是按照 `control_robot.py` 脚本的 `--control.root` 和 `--control.repo_id` 结构保存的（例如，数据在 `<root>/<repo_id>` 目录下），那么这里的 `repo_id` 应该与您收集时使用的 `repo_id` 一致。
-    *   例如，如果您收集时设置 `--control.root /my_data` 和 `--control.repo_id user/my_task`，那么数据在 `/my_data/user/my_task`。此时，可视化时应使用 `--repo-id user/my_task --root /my_data`。
-    *   如果您直接指向包含 `train` 和/或 `eval` 子文件夹（其中包含 `.parquet` 和图像文件）的目录，则 `repo_id` 应该是一个指向该目录的相对或绝对路径，而 `--root` 则可以省略或指向其父目录。
-    *   对于您提供的示例 `local/xuanya_dataset_task1`，这通常意味着数据集的实际文件（如 `.parquet` 文件）位于 `<root>/local/xuanya_dataset_task1` 目录下。
-
-*   `--root`:
-    *   指定数据集的根目录。脚本会在 `<root>/<repo_id>` 下查找数据。
-    *   在您的示例中是 `/home/ubuntu/Github/lerobot/data/cat3_pig`。
-
-**示例命令 (根据您提供的信息):**
-
-```bash
-python lerobot/scripts/visualize_dataset_html.py \
-  --repo-id local/xuanya_dataset_task1 \
-  --root /home/ubuntu/Github/lerobot/data/cat3_pig
-```
-
-运行此命令后，脚本会在数据集文件夹内（例如 `/home/ubuntu/Github/lerobot/data/cat3_pig/local/xuanya_dataset_task1/visualizations`）生成一个或多个 `.html` 文件。您可以用网页浏览器打开这些 HTML 文件来查看数据。
-
-**其他可选参数:**
-*   `--max-episodes-per-split`: 每个 split (例如 train/eval) 最多可视化多少个 episode。
-*   `--video`: 是否将图像序列合成为视频进行展示 (需要 `ffmpeg`)。
-*   `--images-per-video`: 合成视频时，每秒的帧数。
-
-您可以通过运行 `python lerobot/scripts/visualize_dataset_html.py --help` 查看所有可用参数。
-
-祝您数据收集顺利！ 

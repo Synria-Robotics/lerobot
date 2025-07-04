@@ -413,10 +413,16 @@ def _init_rerun(control_config: ControlConfig, session_name: str = "lerobot_cont
 
 @parser.wrap()
 def control_robot(cfg: ControlPipelineConfig):
-    init_logging()
-    logging.getLogger("lerobot.common.robot_devices.control_utils").setLevel(logging.WARNING)
-
-    logging.info(pformat(asdict(cfg)))
+    # init_logging()
+    # logging.getLogger("lerobot.common.robot_devices.control_utils").setLevel(logging.CRITICAL)
+    # # logging.getLogger("lerobot.common.robot_devices.control_utils").setLevel(logging.WARNING)
+    # logging.getLogger("lerobot.common.robot_devices").setLevel(logging.CRITICAL)
+    
+    # # Suppress any logs from rol_utils or similar modules
+    # logging.getLogger("rol_utils").setLevel(logging.CRITICAL)
+    # logging.getLogger("lerobot").setLevel(logging.WARNING)  # Keep warnings but suppress info
+    
+    # logging.info(pformat(asdict(cfg)))
 
     robot = make_robot_from_config(cfg.robot)
 
