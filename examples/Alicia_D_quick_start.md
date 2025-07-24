@@ -57,6 +57,43 @@ python lerobot/scripts/control_robot.py \
     --control.display_data=true
 ```
 
+或修改
+`/home/ubuntu/alerobot/lerobot/common/robot_devices/robots/configs.py`中`Alicia-D`对应参数。
+例如
+```
+@RobotConfig.register_subclass("alicia_duo")
+@dataclass
+class AliciaDuoRobotConfig(RobotConfig):
+    """Alicia Duo机械臂的配置类"""
+    
+    # 串口设置
+    port: str = ""  # 留空则自动搜索
+    baudrate: int = 921600
+    # debug_mode: bool = True
+    debug_mode: bool = False
+    
+    # 摄像头配置
+    cameras: dict[str, CameraConfig] = field(default_factory=lambda: {
+            "wrist_camera": OpenCVCameraConfig(
+                camera_index="/dev/video4", fps=30, width=640, height=480, rotation=90
+            ),
+            "top_camera": OpenCVCameraConfig(
+                camera_index="/dev/video6", fps=30, width=640, height=480, rotation=180
+            ),})
+    
+    # 安全控制参数
+    max_relative_target: list[float] | float | None = None  # 默认限制每次移动0.1弧度（约5.7度）
+    
+    # 模拟模式
+    mock: bool = False
+    
+    def __post_init__(self):
+        if self.mock:
+            for cam in self.cameras.values():
+                if not cam.mock:
+                    cam.mock = True
+```
+
 ## 数据记录
 
 记录机械臂操作数据：
@@ -79,6 +116,21 @@ python lerobot/scripts/control_robot.py \
 - 按`←`（左方向键）取消当前回合并重新记录
 - 按`ESC`（退出键）停止整个记录过程
 
+## 数据集训练
+```
+    python lerobot/scripts/train.py \
+    --policy.type=diffusion \
+    --dataset.repo_id = path_to_dataset \
+    --output_dir=path_to_training_result
+```
+## 模型验证
+进入训练结果
+```/path_to_training_result/checkpoints/last/pretrained_model/config.json```
+确保首行已添加训练类型
+```
+    "type": "dp",
+```
+参考`examples/dp_inference.py`修改对应参数验证训练结果
 ## 调试模式
 
 启用调试模式获取更多日志信息：
