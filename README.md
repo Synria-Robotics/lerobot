@@ -69,19 +69,17 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     ```
 
 2.  **创建虚拟环境 (推荐)**:
-    为了避免不同 Python 项目之间的库版本冲突，强烈建议使用虚拟环境。
+    创建`conda`环境：
 
     ```bash
-    # 创建一个名为 'lerobot_env' 的虚拟环境
-    python -m venv lerobot_env
-
-    # 激活虚拟环境
-    # Linux / macOS:
-    source lerobot_env/bin/activate
-    # Windows:
-    # lerobot_env\\Scripts\\activate
+    conda create -y -n lerobot python=3.10
+    conda activate lerobot
     ```
-    激活后，您的终端提示符通常会显示虚拟环境的名称 (例如 `(lerobot_env) user@hostname:...$`)。
+    安装环境依赖：
+    ```bash
+    conda install ffmpeg -c conda-forge
+    ```
+
 
 3.  **安装 LeRobot 及其依赖**:
     在激活的虚拟环境中，使用 pip 安装 LeRobot。
