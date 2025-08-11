@@ -1,3 +1,4 @@
 [submodule "Alicia-D-SDK"]
     path = Alicia-D-SDK
     url = https://github.com/Synria-Robotics/Alicia-D-SDK.git
+    branch = v5.5.0
