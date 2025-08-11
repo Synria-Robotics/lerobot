@@ -1,13 +1,13 @@
-# Alicia Duo 机械臂 - LeRobot 框架快速上手指南
+# Alicia-D 机械臂 - LeRobot 框架快速上手指南
 
-欢迎使用 Alicia Duo 机械臂与 LeRobot 框架！本指南将帮助您快速设置环境、安装必要的软件，并开始使用 Alicia Duo 机械臂收集数据。即使您是机器人或编程新手，也能轻松上手。
+欢迎使用 Alicia-D 机械臂与 LeRobot 框架！本指南将帮助您快速设置环境、安装必要的软件，并开始使用 Alicia-D 机械臂收集数据。即使您是机器人或编程新手，也能轻松上手。
 
 ## 目录
 
 1.  [系统要求](#1-系统要求)
-2.  [安装 Alicia Duo SDK](#2-安装-alicia-duo-sdk)
+2.  [安装 Alicia-D SDK](#2-安装-alicia-duo-sdk)
 3.  [安装 LeRobot 框架](#3-安装-lerobot-框架)
-4.  [连接 Alicia Duo 机械臂](#4-连接-alicia-duo-机械臂)
+4.  [连接 Alicia-D 机械臂](#4-连接-alicia-duo-机械臂)
 5.  [配置数据收集参数](#5-配置数据收集参数)
 6.  [开始数据收集](#6-开始数据收集)
 7.  [常见问题与故障排除](#7-常见问题与故障排除)
@@ -20,19 +20,19 @@
 *   **操作系统**: 推荐使用 Linux (例如 Ubuntu 20.04 或更高版本)。本指南主要基于 Linux 环境。
 *   **Python**: 版本 3.8 或更高。
 *   **硬件**:
-    *   Alicia Duo 机械臂。
+    *   Alicia-D 机械臂。
     *   一台用于连接和控制机械臂的计算机。
-    *   USB 数据线，用于连接计算机和 Alicia Duo 机械臂。
+    *   USB 数据线，用于连接计算机和 Alicia-D 机械臂。
     *   (可选) 如果您希望收集视觉数据，需要至少一个兼容的USB摄像头 (例如普通的网络摄像头)。
 
 ---
 
-## 2. 安装 Alicia Duo SDK
+## 2. 安装 Alicia-D SDK
 
-Alicia Duo SDK (Software Development Kit) 是控制 Alicia Duo 机械臂和读取其数据的核心软件库。
+Alicia-D SDK (Software Development Kit) 是控制 Alicia-D 机械臂和读取其数据的核心软件库。
 
 1.  **获取 SDK**:
-    请从 Alicia Duo 官方渠道获取最新的 SDK 压缩包或 Git 仓库地址。假设您已将其下载并解压到名为 `Alicia_duo_sdk` 的文件夹。
+    请从 Alicia-D 官方渠道获取最新的 SDK 压缩包或 Git 仓库地址。假设您已将其下载并解压到名为 `Alicia_duo_sdk` 的文件夹。
 
 2.  **安装 SDK**:
     打开您的终端 (Terminal)，进入到 SDK 所在的目录，然后使用 pip (Python 的包安装器) 进行安装。
@@ -53,7 +53,7 @@ Alicia Duo SDK (Software Development Kit) 是控制 Alicia Duo 机械臂和读�
 
 ## 3. 安装 LeRobot 框架
 
-LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制 Alicia Duo 并收集数据。
+LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制 Alicia-D 并收集数据。
 
 1.  **获取 LeRobot**:
     使用 Git 从 GitHub 克隆 LeRobot 仓库。如果您没有安装 Git，请先安装它 (搜索 "如何安装 Git on [您的操作系统]")。
@@ -63,7 +63,7 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     cd /path/to/your/projects_directory
 
     # 克隆 LeRobot 仓库
-    git clone https://github.com/Xuanya-Robotics/lerobot.git
+    git clone https://github.com/Synria-Robotics/lerobot.git
     # 进入 LeRobot 文件夹
     cd lerobot
     ```
@@ -77,7 +77,7 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     ```
     安装环境依赖：
     ```bash
-    conda install ffmpeg -c conda-forge
+    pip install ffmpeg
     ```
 
 
@@ -93,10 +93,10 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
 
 ---
 
-## 4. 连接 Alicia Duo 机械臂
+## 4. 连接 Alicia-D 机械臂
 
 1.  **物理连接**:
-    *   使用 USB 数据线将 Alicia Duo 机械臂连接到您的计算机。
+    *   使用 USB 数据线将 Alicia-D 遥操套件的示教臂连接到您的计算机。
     *   确保机械臂已通电 (如果需要外部电源)。
     *   (可选) 如果您要使用摄像头，也将摄像头连接到计算机的USB端口。
 
@@ -105,7 +105,23 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     ```bash
     ls /dev/ttyUSB*
     ```
-    LeRobot 框架中的 Alicia Duo 驱动默认会自动搜索可用的串口。如果自动搜索失败，您可能需要手动指定端口号。
+    LeRobot 框架中的 Alicia-D 驱动默认会自动搜索可用的串口。如果自动搜索失败，您可能需要手动指定端口号。
+
+3.  **检查连接 (Windows)**:
+    在 Windows 系统上，连接机械臂后，它会显示为一个 `COM` 串口（例如 `COM3`、`COM5`）。您可以通过以下方式查看端口：
+
+    - 打开“设备管理器” → 展开“端口 (COM 和 LPT)” → 查找类似 “USB-SERIAL CH340 (COM3)” 或 “Silicon Labs CP210x USB to UART Bridge (COM5)” 的设备名称。
+    - 或使用 `mode` 命令（CMD/PowerShell 均可）：
+      ```cmd
+      mode
+      ```
+
+    如自动搜索失败，可在命令行通过 `--robot.port=COM3` 显式指定端口（将 `COM3` 替换为您的实际端口）。
+
+    注意事项：
+    - 若首次连接后未识别端口，可能需要安装对应的 USB 转串口驱动（常见为 CH340 或 CP210x），可从芯片官方或硬件厂商处下载并安装。
+    - 确保没有其他程序占用该串口（如串口调试助手等）。
+    - 保持默认波特率 `921600`；如需修改，请与设备端设置一致。
 
 ---
 
@@ -113,7 +129,7 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
 
 LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键参数：
 
-*   `--robot.type=alicia_duo`: 指定我们要使用的机器人类型是 Alicia Duo。
+*   `--robot.type=alicia_duo`: 指定我们要使用的机器人类型是 Alicia-D。
 *   `--control.type=record`: 指定我们要执行的任务是数据记录。
 *   `--control.fps=30`: 设置数据记录的帧率 (每秒捕获多少帧数据)。常用的值是 15、30。
 *   `--control.single_task="在这里描述您的任务"`: 对您正在演示或记录的任务进行简短描述，例如 `"机械臂抓取红色的积木并放入盒子中"`。
@@ -124,8 +140,8 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
 *   `--control.episode_time_s=60`: 每个回合计划记录多长时间 (秒)。
 *   `--control.reset_time_s=30`: 每个回合结束后，给您多少时间来重置场景或机械臂到初始状态。
 *   `--control.push_to_hub=false`: 是否在数据收集完成后自动将数据集上传到 Hugging Face Hub。初次使用建议设为 `false`。
-*   `--robot.port=""`: (可选) 指定机械臂连接的串口。留空则自动搜索。如果自动搜索失败，您可能需要设置为类似 `"/dev/ttyUSB0"` 的值。
-*   `--robot.baudrate=921600`: (可选) 串口通信的波特率。Alicia Duo 通常使用 921600，这是默认值。
+*   `--robot.port=""`: (可选) 指定机械臂连接的串口。留空则自动搜索。如果自动搜索失败，请手动设置：Linux 示例 `"/dev/ttyUSB0"`，Windows 示例 `COM3`（将其替换为设备管理器中显示的实际端口）。
+*   `--robot.baudrate=921600`: (可选) 串口通信的波特率。Alicia-D 通常使用 921600，这是默认值。
 
 **添加摄像头 (可选):**
 
@@ -142,7 +158,7 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
     @RobotConfig.register_subclass("alicia_duo")
     @dataclass
     class AliciaDuoRobotConfig(RobotConfig):
-        """Alicia Duo机械臂的配置类"""
+        """Alicia-D机械臂的配置类"""
         
         # 串口设置
         port: str = ""  # 留空则自动搜索
@@ -201,18 +217,7 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
 **示例命令 (假设摄像头已在 `configs.py` 中配置):**
 
 ```bash
-python lerobot/scripts/control_robot.py \
-    --robot.type=alicia_duo \
-    --control.type=record \
-    --control.fps=30 \
-    --control.single_task="演示如何用Alicia Duo机械臂移动一个方块" \
-    --control.root=/home/YOUR_USERNAME/lerobot_datasets/alicia_demo \
-    --control.repo_id=YOUR_HF_USERNAME/alicia_demo_dataset \
-    --control.num_episodes=5 \
-    --control.warmup_time_s=5 \
-    --control.episode_time_s=60 \
-    --control.reset_time_s=20 \
-    --control.push_to_hub=false
+python lerobot/scripts/control_robot.py --robot.type=alicia_duo --control.type=record  --control.fps=30  --control.single_task="演示如何用Alicia-D机械臂移动一个方块"  --control.root=/home/YOUR_USERNAME/lerobot_datasets/alicia_demo  --control.repo_id=YOUR_HF_USERNAME/alicia_demo_dataset  --control.num_episodes=5  --control.warmup_time_s=5  --control.episode_time_s=60  --control.reset_time_s=20  --control.push_to_hub=false
 ```
 **请务必将 `/home/YOUR_USERNAME/lerobot_datasets/alicia_demo` 和 `YOUR_HF_USERNAME/alicia_demo_dataset` 替换为您自己的路径和名称。**
 
@@ -225,7 +230,7 @@ python lerobot/scripts/control_robot.py \
     --robot.type=alicia_duo \
     --control.type=record \
     --control.fps=30 \
-    --control.single_task="演示如何用Alicia Duo机械臂移动一个方块（带视觉）" \
+    --control.single_task="演示如何用Alicia-D机械臂移动一个方块（带视觉）" \
     --control.root=/home/YOUR_USERNAME/lerobot_datasets/alicia_visual_demo \
     --control.repo_id=YOUR_HF_USERNAME/alicia_visual_demo_dataset \
     --control.num_episodes=5 \
@@ -241,7 +246,7 @@ python lerobot/scripts/control_robot.py \
     --robot.type=alicia_duo_dual \
     --control.type=record \
     --control.fps=30 \
-    --control.single_task="演示如何用Alicia Duo机械臂移动一个方块（带视觉）" \
+    --control.single_task="演示如何用Alicia-D机械臂移动一个方块（带视觉）" \
     --control.root=/home/YOUR_USERNAME/lerobot_datasets/alicia_visual_demo  \
     --control.repo_id=ubuntu/alicia_visual_demo_dataset \
     --control.num_episodes=10 \
@@ -256,7 +261,7 @@ python lerobot/scripts/control_robot.py \
 
 *   脚本运行后，会首先连接机械臂和摄像头。
 *   **预热阶段**: 您有 `warmup_time_s` 秒的时间将机械臂移动到起始姿态。
-*   **记录阶段**: LeRobot 会提示开始记录。在此期间，您操作 Alicia Duo 机械臂执行任务，LeRobot 会记录下机械臂的关节状态、夹爪状态以及摄像头图像 (如果配置了)。此阶段持续 `episode_time_s` 秒。
+*   **记录阶段**: LeRobot 会提示开始记录。在此期间，您操作 Alicia-D 机械臂执行任务，LeRobot 会记录下机械臂的关节状态、夹爪状态以及摄像头图像 (如果配置了)。此阶段持续 `episode_time_s` 秒。
 *   **重置阶段**: 一个回合记录完成后，您有 `reset_time_s` 秒的时间将场景和机械臂复位，为下一个回合做准备。
 *   这个过程会重复 `num_episodes` 次。
 
@@ -287,18 +292,18 @@ python lerobot/scripts/control_robot.py \
 
 ## 9. 常见问题与故障排除
 
-*   **"未找到 Alicia Duo SDK" 或 "ArmController 未初始化"**:
-    *   请确保您已正确安装 Alicia Duo SDK (参见步骤2)。
-    *   确认您在运行 LeRobot 命令时，Alicia Duo SDK 所在的 Python 环境是激活的 (或者它已安装到全局 Python 环境中，并且 LeRobot 使用的是同一个 Python 解释器)。
+*   **"未找到 Alicia-D SDK" 或 "ArmController 未初始化"**:
+    *   请确保您已正确安装 Alicia-D SDK (参见步骤2)。
+    *   确认您在运行 LeRobot 命令时，Alicia-D SDK 所在的 Python 环境是激活的 (或者它已安装到全局 Python 环境中，并且 LeRobot 使用的是同一个 Python 解释器)。
 
-*   **"无法连接到 Alicia Duo 机械臂"**:
+*   **"无法连接到 Alicia-D 机械臂"**:
     *   检查 USB 连接是否牢固，机械臂是否已通电。
     *   确认机械臂的串口是否被其他程序占用。
     *   尝试手动指定 `--robot.port` 参数，例如 `--robot.port=/dev/ttyUSB0`。您可能需要尝试不同的数字 (ttyUSB0, ttyUSB1 等)。
     *   在 Linux 上，您可能需要串口的读写权限。尝试将您的用户添加到 `dialout` 组：`sudo usermod -a -G dialout $USER`，然后**重启计算机**或重新登录。
 
 *   **"AttributeError: 'AliciaDuoRobot' object has no attribute 'some_feature'"**:
-    *   这通常表示 Alicia Duo 的 LeRobot 驱动实现 (`alicia_duo.py`) 可能缺少了框架期望的某些属性或方法。请确保您使用的是最新或兼容版本的 LeRobot 和 Alicia Duo 驱动。如果问题是最近集成的，可能需要开发者进一步调试。
+    *   这通常表示 Alicia-D 的 LeRobot 驱动实现 (`alicia_duo.py`) 可能缺少了框架期望的某些属性或方法。请确保您使用的是最新或兼容版本的 LeRobot 和 Alicia-D 驱动。如果问题是最近集成的，可能需要开发者进一步调试。
 
 *   **摄像头无法工作或报错**:
     *   确保摄像头已正确连接到 USB 端口。
@@ -309,6 +314,6 @@ python lerobot/scripts/control_robot.py \
     *   如果 `--control.fps` 设置得很高，但实际感觉卡顿或日志显示帧率较低，可能是计算机性能瓶颈，或者摄像头/机械臂通信延迟。
     *   确保您的 `--robot.max_relative_target` (在 `lerobot/common/robot_devices/robots/configs.py` 中 `AliciaDuoRobotConfig` 定义或通过命令行覆盖) 设置合理，以允许平滑运动。
 
-如果您遇到其他问题，建议查看终端输出的详细错误信息，并可以查阅 LeRobot 的 GitHub Issues 或向 Alicia Duo 技术支持寻求帮助。
+如果您遇到其他问题，建议查看终端输出的详细错误信息，并可以查阅 LeRobot 的 GitHub Issues 或向 Alicia-D 技术支持寻求帮助。
 
 ---

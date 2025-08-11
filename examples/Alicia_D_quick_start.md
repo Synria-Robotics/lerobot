@@ -1,10 +1,10 @@
-# 通过命令行控制Alicia Duo机械臂
+# 通过命令行控制Alicia-D机械臂
 
-本文档介绍如何使用`control_robot.py`脚本来控制Alicia Duo机械臂。
+本文档介绍如何使用`control_robot.py`脚本来控制Alicia-D机械臂。
 
 ## 环境准备
 
-1. 确保已安装LeRobot框架和Alicia Duo SDK
+1. 确保已安装LeRobot框架和Alicia-D SDK
 2. 确保机械臂已正确连接到计算机
 
 ## 遥操作机械臂
@@ -64,7 +64,7 @@ python lerobot/scripts/control_robot.py \
 @RobotConfig.register_subclass("alicia_duo")
 @dataclass
 class AliciaDuoRobotConfig(RobotConfig):
-    """Alicia Duo机械臂的配置类"""
+    """Alicia-D机械臂的配置类"""
     
     # 串口设置
     port: str = ""  # 留空则自动搜索
@@ -104,7 +104,7 @@ python lerobot/scripts/control_robot.py \
     --control.type=record \
     --control.fps=30 \
     --control.repo_id=YOUR_USERNAME/alicia_duo_dataset \
-    --control.single_task="使用Alicia Duo机械臂抓取物体" \
+    --control.single_task="使用Alicia-D机械臂抓取物体" \
     --control.num_episodes=5 \
     --control.warmup_time_s=2 \
     --control.episode_time_s=30 \

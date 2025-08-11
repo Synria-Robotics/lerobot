@@ -1,16 +1,16 @@
-# 使用Alicia Duo机械臂
+# 使用Alicia-D机械臂
 
-本指南将帮助您设置和使用Alicia Duo机械臂与LeRobot框架。
+本指南将帮助您设置和使用Alicia-D机械臂与LeRobot框架。
 
 ## 环境准备
 
-1. 确保已经安装LeRobot框架和Alicia Duo SDK：
+1. 确保已经安装LeRobot框架和Alicia-D SDK：
 
 ```bash
 # 安装LeRobot
 pip install -e .
 
-# 安装Alicia Duo SDK
+# 安装Alicia-D SDK
 cd /path/to/Alicia_duo_sdk
 pip install -e .
 ```
@@ -79,7 +79,7 @@ python lerobot/scripts/control_robot.py \
     --control.type=record \
     --control.fps=30 \
     --control.repo_id=YOUR_USERNAME/alicia_duo_dataset \
-    --control.single_task="使用Alicia Duo机械臂抓取物体并放置到指定位置。" \
+    --control.single_task="使用Alicia-D机械臂抓取物体并放置到指定位置。" \
     --control.num_episodes=5 \
     --control.warmup_time_s=5 \
     --control.episode_time_s=30 \
@@ -144,12 +144,12 @@ robot:
    - 确保电源供应充足
 
 3. **找不到或无法导入AliciaDuo模块**
-   - 确认已正确安装Alicia Duo SDK
+   - 确认已正确安装Alicia-D SDK
    - 检查Python路径是否正确
 
 ## 自定义机械臂配置
 
-如果需要更深入地自定义Alicia Duo机械臂的行为，可以修改以下文件：
+如果需要更深入地自定义Alicia-D机械臂的行为，可以修改以下文件：
 
 - `lerobot/common/robot_devices/robots/configs.py`中的`AliciaDuoRobotConfig`类
 - `lerobot/common/robot_devices/robots/alicia_duo.py`中的`AliciaDuoRobot`类

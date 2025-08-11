@@ -1,6 +1,6 @@
-# Alicia Duo机械臂集成总结
+# Alicia-D机械臂集成总结
 
-我们已成功将Alicia Duo机械臂集成到LeRobot框架中。下面是集成的主要组件和使用方法。
+我们已成功将Alicia-D机械臂集成到LeRobot框架中。下面是集成的主要组件和使用方法。
 
 ## 已完成的工作
 
@@ -12,13 +12,13 @@
 
 2. **控制类 - AliciaDuoRobot**
    - 创建`lerobot/common/robot_devices/robots/alicia_duo.py`文件
-   - 封装了Alicia Duo SDK的`ArmController`
+   - 封装了Alicia-D SDK的`ArmController`
    - 实现了LeRobot框架需要的Robot协议接口
    - 提供了连接、数据读取和控制功能
 
 3. **工厂函数支持**
    - 更新`utils.py`中的`make_robot_config`和`make_robot_from_config`函数
-   - 使系统能识别并创建Alicia Duo机械臂实例
+   - 使系统能识别并创建Alicia-D机械臂实例
 
 4. **使用示例**
    - 直接使用Python API的示例：`examples/use_alicia_duo.py`
@@ -99,7 +99,7 @@ python lerobot/scripts/control_robot.py \
     --control.type=record \
     --control.fps=30 \
     --control.repo_id=YOUR_USERNAME/alicia_duo_dataset \
-    --control.single_task="使用Alicia Duo机械臂抓取物体" \
+    --control.single_task="使用Alicia-D机械臂抓取物体" \
     --control.num_episodes=5
 ```
 

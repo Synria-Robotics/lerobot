@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Alicia Duo机械臂的实现。"""
+"""Alicia-D机械臂的实现。"""
 
 import logging
 import time
@@ -20,11 +20,11 @@ import time
 import numpy as np
 import torch
 
-# 导入Alicia Duo SDK
+# 导入Alicia-D SDK
 try:
     from alicia_duo_sdk.controller import ArmController
 except ImportError:
-    logging.warning("未找到Alicia Duo SDK。请确保已正确安装`alicia_duo_sdk`包。")
+    logging.warning("未找到Alicia-D SDK。请确保已正确安装`alicia_duo_sdk`包。")
     ArmController = None
 
 from lerobot.common.robot_devices.cameras.utils import make_cameras_from_configs
@@ -33,9 +33,9 @@ from lerobot.common.robot_devices.utils import RobotDeviceAlreadyConnectedError,
 
 
 class AliciaDuoRobot:
-    """Alicia Duo机械臂的控制类实现。
+    """Alicia-D机械臂的控制类实现。
     
-    这个类包装了Alicia Duo SDK的ArmController，提供了与LeRobot框架兼容的接口。
+    这个类包装了Alicia-D SDK的ArmController，提供了与LeRobot框架兼容的接口。
     它支持基本的连接、断开连接、读取状态和发送动作等功能。
     
     实例化示例:
@@ -50,10 +50,10 @@ class AliciaDuoRobot:
     """
     
     def __init__(self, config: AliciaDuoRobotConfig):
-        """初始化Alicia Duo机械臂控制器。
+        """初始化Alicia-D机械臂控制器。
         
         Args:
-            config: Alicia Duo机械臂配置
+            config: Alicia-D机械臂配置
         """
         self.leader_arms = {}
         self.follower_arms = {}
@@ -85,13 +85,13 @@ class AliciaDuoRobot:
         else:
             self.controller = None
             if not self.config.mock:
-                logging.error("无法创建ArmController。请确保已安装Alicia Duo SDK。")
+                logging.error("无法创建ArmController。请确保已安装Alicia-D SDK。")
         
         # 关节数量：6个关节+1个夹爪
         self.joint_count = 6
         self.has_gripper = True
         
-        logging.info("已初始化Alicia Duo机械臂控制器")
+        logging.info("已初始化Alicia-D机械臂控制器")
     
     @property
     def features(self):
@@ -167,13 +167,13 @@ class AliciaDuoRobot:
     @property
     def available_arms(self):
         """可用的机械臂列表（兼容接口）。"""
-        return ["main"]  # Alicia Duo只有一个机械臂
+        return ["main"]  # Alicia-D只有一个机械臂
     
     def connect(self):
         """连接到机械臂。"""
         if self.is_connected:
             raise RobotDeviceAlreadyConnectedError(
-                "Alicia Duo机械臂已连接。请勿重复运行`robot.connect()`。"
+                "Alicia-D机械臂已连接。请勿重复运行`robot.connect()`。"
             )
         
         if self.config.mock:
@@ -183,13 +183,13 @@ class AliciaDuoRobot:
         
         if self.controller is None:
             raise RobotDeviceNotConnectedError(
-                "ArmController未初始化。请确保已安装Alicia Duo SDK。"
+                "ArmController未初始化。请确保已安装Alicia-D SDK。"
             )
         
         # 连接到机械臂
-        logging.info("正在连接到Alicia Duo机械臂...")
+        logging.info("正在连接到Alicia-D机械臂...")
         if not self.controller.connect():
-            raise RobotDeviceNotConnectedError("无法连接到Alicia Duo机械臂。请检查连接。")
+            raise RobotDeviceNotConnectedError("无法连接到Alicia-D机械臂。请检查连接。")
         
         # 连接摄像头（如果有）
         for name in self.cameras:
@@ -197,14 +197,14 @@ class AliciaDuoRobot:
             self.cameras[name].connect()
         
         self.is_connected = True
-        logging.info("Alicia Duo机械臂连接成功")
+        logging.info("Alicia-D机械臂连接成功")
     
     def run_calibration(self):
         """空的校准方法实现，满足Robot协议要求。
         
         由于用户已经在外部完成校准，此方法不执行任何操作。
         """
-        logging.info("Alicia Duo机械臂已在外部校准，无需进行内部校准。")
+        logging.info("Alicia-D机械臂已在外部校准，无需进行内部校准。")
         pass
     
     def teleop_step(self, record_data=False):
@@ -344,7 +344,7 @@ class AliciaDuoRobot:
         if not self.is_connected:
             return
         
-        logging.info("正在断开Alicia Duo机械臂连接...")
+        logging.info("正在断开Alicia-D机械臂连接...")
         
         # 断开摄像头连接
         for name, cam in self.cameras.items():

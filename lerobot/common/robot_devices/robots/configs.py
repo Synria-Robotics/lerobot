@@ -616,7 +616,7 @@ class LeKiwiRobotConfig(RobotConfig):
 @RobotConfig.register_subclass("alicia_duo")
 @dataclass
 class AliciaDuoRobotConfig(RobotConfig):
-    """Alicia Duo机械臂的配置类"""
+    """Alicia-D机械臂的配置类"""
     
     # 串口设置
     port: str = ""  # 留空则自动搜索
@@ -648,7 +648,7 @@ class AliciaDuoRobotConfig(RobotConfig):
 @RobotConfig.register_subclass("alicia_duo_dual")
 @dataclass
 class AliciaDuoDualRobotConfig(RobotConfig):
-    """双Alicia Duo机械臂的配置类"""
+    """双Alicia-D机械臂的配置类"""
     
     # 机械臂配置
     arms: dict[str, dict] = field(default_factory=lambda: {

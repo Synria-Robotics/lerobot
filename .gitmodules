@@ -1,3 +1,3 @@
-[submodule "Alicia_duo_sdk"]
-    path = Alicia_duo_sdk
-    url = https://github.com/Xuanya-Robotics/Alicia_duo_sdk.git
+[submodule "Alicia-D-SDK"]
+    path = Alicia-D-SDK
+    url = https://github.com/Synria-Robotics/Alicia-D-SDK.git
