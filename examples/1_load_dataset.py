@@ -47,10 +47,11 @@ from lerobot.common.datasets.lerobot_dataset import LeRobotDataset, LeRobotDatas
 # https://huggingface.co/datasets?other=LeRobot
 
 # 让我们以这个为例
-repo_id = "lerobot/aloha_mobile_cabinet"
+repo_id = "alicia_demo"
+root = "D:\\Github\\Synria-Robotics\\lerobot\\datasets\\alicia_demo"
 
 # 我们可以查看并获取其元数据以了解更多信息：
-ds_meta = LeRobotDatasetMetadata(repo_id)
+ds_meta = LeRobotDatasetMetadata(repo_id, root)
 
 
 # 通过仅实例化此类，您可以快速访问有关数据集内容和结构的有用信息，
@@ -59,7 +60,7 @@ print(f"总 episode 数：{ds_meta.total_episodes}")
 print(f"每个 episode 的平均帧数：{ds_meta.total_frames / ds_meta.total_episodes:.3f}")
 print(f"数据收集期间使用的每秒帧数：{ds_meta.fps}")
 print(f"机器人类型：{ds_meta.robot_type}")
-print(f"用于访问相机图像的键：{ds_meta.camera_keys=}\n")
+print(f"用于访问相机图像的键：{ds_meta.camera_keys}\n")
 
 print("任务：")
 print(ds_meta.tasks)
@@ -72,7 +73,7 @@ print(ds_meta)
 
 # 然后您可以从 hub 加载实际的数据集。
 # 加载任何 episode 子集：
-dataset = LeRobotDataset(repo_id, episodes=[0, 10, 11, 23])
+dataset = LeRobotDataset(repo_id, root, episodes=[0])
 
 # 查看您有多少帧：
 print(f"选定的 episodes：{dataset.episodes}")
@@ -80,7 +81,7 @@ print(f"选定的 episode 数量：{dataset.num_episodes}")
 print(f"选定的帧数：{dataset.num_frames}")
 
 # 或者简单地加载整个数据集：
-dataset = LeRobotDataset(repo_id)
+dataset = LeRobotDataset(repo_id, root)
 print(f"选定的 episode 数量：{dataset.num_episodes}")
 print(f"选定的帧数：{dataset.num_frames}")
 
@@ -128,10 +129,10 @@ delta_timestamps = {
 # 请注意，在任何情况下，这些 delta_timestamps 值都需要是 (1/fps) 的倍数，以便添加到任何时间戳后，
 # 您仍然可以获得有效的时间戳。
 
-dataset = LeRobotDataset(repo_id, delta_timestamps=delta_timestamps)
-print(f"\n{dataset[0][camera_key].shape=}")  # (4, c, h, w)
-print(f"{dataset[0]['observation.state'].shape=}")  # (6, c)
-print(f"{dataset[0]['action'].shape=}\n")  # (64, c)
+dataset = LeRobotDataset(repo_id, root, delta_timestamps=delta_timestamps)
+print("\n图像形状:", dataset[0][camera_key].shape)  # (4, c, h, w)
+print("状态形状:", dataset[0]['observation.state'].shape)  # (6, c)
+print("动作形状:", dataset[0]['action'].shape, "\n")  # (64, c)
 
 # 最后，我们的数据集与 PyTorch dataloaders 和 samplers 完全兼容，因为它们只是 PyTorch 数据集。
 dataloader = torch.utils.data.DataLoader(
@@ -142,7 +143,7 @@ dataloader = torch.utils.data.DataLoader(
 )
 
 for batch in dataloader:
-    print(f"{batch[camera_key].shape=}")  # (32, 4, c, h, w)
-    print(f"{batch['observation.state'].shape=}")  # (32, 6, c)
-    print(f"{batch['action'].shape=}")  # (32, 64, c)
+    print("batch 图像形状:", batch[camera_key].shape)  # (32, 4, c, h, w)
+    print("batch 状态形状:", batch['observation.state'].shape)  # (32, 6, c)
+    print("batch 动作形状:", batch['action'].shape)  # (32, 64, c)
     break

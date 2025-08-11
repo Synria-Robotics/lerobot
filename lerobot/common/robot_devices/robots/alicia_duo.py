@@ -22,10 +22,10 @@ import torch
 
 # 导入Alicia-D SDK
 try:
-    from alicia_duo_sdk.controller import ArmController
+    from alicia_duo_sdk.controller import get_default_session, ControlApi
 except ImportError:
     logging.warning("未找到Alicia-D SDK。请确保已正确安装`alicia_duo_sdk`包。")
-    ArmController = None
+    ControlApi = None
 
 from lerobot.common.robot_devices.cameras.utils import make_cameras_from_configs
 from lerobot.common.robot_devices.robots.configs import AliciaDuoRobotConfig
@@ -35,7 +35,7 @@ from lerobot.common.robot_devices.utils import RobotDeviceAlreadyConnectedError,
 class AliciaDuoRobot:
     """Alicia-D机械臂的控制类实现。
     
-    这个类包装了Alicia-D SDK的ArmController，提供了与LeRobot框架兼容的接口。
+    这个类包装了Alicia-D SDK的ControlApi，提供了与LeRobot框架兼容的接口。
     它支持基本的连接、断开连接、读取状态和发送动作等功能。
     
     实例化示例:
@@ -76,16 +76,13 @@ class AliciaDuoRobot:
         self.logs = {}
         
         # 创建控制器
-        if ArmController is not None:
-            self.controller = ArmController(
-                port=self.port, 
-                baudrate=self.baudrate, 
-                debug_mode=self.debug_mode
-            )
+        if ControlApi is not None:
+            self.session = get_default_session()
+            self.controller = ControlApi(session=self.session)
         else:
             self.controller = None
             if not self.config.mock:
-                logging.error("无法创建ArmController。请确保已安装Alicia-D SDK。")
+                logging.error("无法创建ControlApi。请确保已安装Alicia-D SDK。")
         
         # 关节数量：6个关节+1个夹爪
         self.joint_count = 6
@@ -186,10 +183,10 @@ class AliciaDuoRobot:
                 "ArmController未初始化。请确保已安装Alicia-D SDK。"
             )
         
-        # 连接到机械臂
-        logging.info("正在连接到Alicia-D机械臂...")
-        if not self.controller.connect():
-            raise RobotDeviceNotConnectedError("无法连接到Alicia-D机械臂。请检查连接。")
+        # # 连接到机械臂
+        # logging.info("正在连接到Alicia-D机械臂...")
+        # if not self.controller.connect():
+        #     raise RobotDeviceNotConnectedError("无法连接到Alicia-D机械臂。请检查连接。")
         
         # 连接摄像头（如果有）
         for name in self.cameras:
@@ -222,7 +219,8 @@ class AliciaDuoRobot:
             )
         
         # 读取当前状态
-        state = self.controller.read_joint_state()
+        joint_rad = self.controller.get_joints()
+        gripper_rad = self.controller.get_gripper()
         
         # 如果不需要记录数据，则提前返回
         if not record_data:
@@ -232,8 +230,8 @@ class AliciaDuoRobot:
         obs_dict = {}
         
         # 关节角度和夹爪角度组合为状态
-        joint_angles = torch.tensor(state.angles, dtype=torch.float32)
-        gripper_angle = torch.tensor([state.gripper], dtype=torch.float32)
+        joint_angles = torch.tensor(joint_rad, dtype=torch.float32)
+        gripper_angle = torch.tensor([gripper_rad], dtype=torch.float32)
         combined_state = torch.cat([joint_angles, gripper_angle])
         obs_dict["observation.state"] = combined_state
         
@@ -259,14 +257,15 @@ class AliciaDuoRobot:
             )
         
         # 读取当前状态
-        state = self.controller.read_joint_state()
+        joint_rad = self.get_joints()
+        gripper_rad = self.get_gripper()
         
         # 创建观察字典
         obs_dict = {}
         
         # 关节角度和夹爪角度组合为状态
-        joint_angles = torch.tensor(state.angles, dtype=torch.float32)
-        gripper_angle = torch.tensor([state.gripper], dtype=torch.float32)
+        joint_angles = torch.tensor(joint_rad, dtype=torch.float32)
+        gripper_angle = torch.tensor([gripper_rad], dtype=torch.float32)
         combined_state = torch.cat([joint_angles, gripper_angle])
         obs_dict["observation.state"] = combined_state
         
@@ -310,8 +309,9 @@ class AliciaDuoRobot:
         # 应用安全限制（如果配置了max_relative_target）
         if self.config.max_relative_target is not None:
             # 读取当前关节位置
-            current_state = self.controller.read_joint_state()
-            current_joint_angles = current_state.angles
+            joint_rad = self.get_joints()
+            gripper_rad = self.get_gripper()
+            current_joint_angles = joint_rad
             
             # 限制关节移动范围
             safe_joint_angles = []
@@ -331,7 +331,7 @@ class AliciaDuoRobot:
             joint_angles = safe_joint_angles
         
         # 发送命令到机械臂
-        self.controller.set_joint_angles(joint_angles, gripper_angle)
+        self.controller.joint_controller.set_joint_angles(joint_angles, gripper_angle)
         
         # 返回实际发送的动作
         if gripper_angle is not None:
@@ -356,7 +356,7 @@ class AliciaDuoRobot:
         
         # 断开机械臂连接
         if not self.config.mock and self.controller is not None:
-            self.controller.disconnect()
+            self.session.joint_controller.disconnect()
             logging.info("已断开机械臂连接")
         
         self.is_connected = False

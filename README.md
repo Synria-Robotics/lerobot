@@ -38,8 +38,8 @@ Alicia-D SDK (Software Development Kit) 是控制 Alicia-D 机械臂和读取其
     打开您的终端 (Terminal)，进入到 SDK 所在的目录，然后使用 pip (Python 的包安装器) 进行安装。
 
     ```bash
-    # 导航到您的 SDK 文件夹，请将 /path/to/Alicia_duo_sdk 替换为实际路径
-    cd /path/to/Alicia_duo_sdk
+    # 导航到您的 SDK 文件夹，请将 /path/to/Alicia-D-SDK 替换为实际路径
+    cd /path/to/Alicia-D-SDK
 
     # 使用 pip 安装 SDK
     # '-e .' 表示以"可编辑"模式安装，这样如果您修改了 SDK 源码，更改会立即生效
@@ -169,14 +169,14 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
         cameras: dict[str, CameraConfig] = field(default_factory=lambda: {
                 "front": OpenCVCameraConfig(
                     # 摄像头名称，您可以自定义，例如 "front_cam", "webcam"
-                    camera_index=0,       # OpenCV 摄像头索引 (通常从0开始)，或设备路径如 "/dev/video0"
+                    camera_index=0,       # OpenCV 摄像头索引 (通常从0开始)，或设备路径如 "/dev/video0" (Windows无路径，直接给摄像头的整数索引)
                     fps=30,               # 期望的帧率
                     width=640,            # 图像宽度
                     height=480,           # 图像高度
                     rotation=0            # 旋转角度 (可以是 0, 90, 180, -90)
                 ),
                 "wrist": OpenCVCameraConfig(
-                    camera_index="/dev/video2", # 另一个摄像头的设备路径或索引
+                    camera_index="/dev/video2", # 另一个摄像头的设备路径或索引 (Windows无路径，直接给摄像头的整数索引)
                     fps=30,
                     width=640,
                     height=480,
@@ -217,7 +217,7 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
 **示例命令 (假设摄像头已在 `configs.py` 中配置):**
 
 ```bash
-python lerobot/scripts/control_robot.py --robot.type=alicia_duo --control.type=record  --control.fps=30  --control.single_task="演示如何用Alicia-D机械臂移动一个方块"  --control.root=/home/YOUR_USERNAME/lerobot_datasets/alicia_demo  --control.repo_id=YOUR_HF_USERNAME/alicia_demo_dataset  --control.num_episodes=5  --control.warmup_time_s=5  --control.episode_time_s=60  --control.reset_time_s=20  --control.push_to_hub=false
+python lerobot/scripts/control_robot.py --robot.type=alicia_duo --control.type=record  --control.fps=30  --control.single_task="演示如何用Alicia-D机械臂移动一个方块"  --control.root=D:\\Github\\Synria-Robotics\\lerobot\\datasets\\alicia_demo  --control.repo_id=YOUR_HF_USERNAME/alicia_demo_dataset  --control.num_episodes=5  --control.warmup_time_s=5  --control.episode_time_s=60  --control.reset_time_s=20  --control.push_to_hub=false
 ```
 **请务必将 `/home/YOUR_USERNAME/lerobot_datasets/alicia_demo` 和 `YOUR_HF_USERNAME/alicia_demo_dataset` 替换为您自己的路径和名称。**
 
@@ -314,6 +314,6 @@ python lerobot/scripts/control_robot.py \
     *   如果 `--control.fps` 设置得很高，但实际感觉卡顿或日志显示帧率较低，可能是计算机性能瓶颈，或者摄像头/机械臂通信延迟。
     *   确保您的 `--robot.max_relative_target` (在 `lerobot/common/robot_devices/robots/configs.py` 中 `AliciaDuoRobotConfig` 定义或通过命令行覆盖) 设置合理，以允许平滑运动。
 
-如果您遇到其他问题，建议查看终端输出的详细错误信息，并可以查阅 LeRobot 的 GitHub Issues 或向 Alicia-D 技术支持寻求帮助。
+如果您遇到其他问题，建议查看终端输出的详细错误信息，并可以查阅 LeRobot 的 GitHub Issues 或向 Synria Robotics 技术支持寻求帮助。
 
 ---

@@ -627,11 +627,12 @@ class AliciaDuoRobotConfig(RobotConfig):
     # 摄像头配置
     cameras: dict[str, CameraConfig] = field(default_factory=lambda: {
             "wrist_camera": OpenCVCameraConfig(
-                camera_index="/dev/video4", fps=30, width=640, height=480, rotation=90
+                camera_index=1, fps=30, width=640, height=480, rotation=90
             ),
-            "top_camera": OpenCVCameraConfig(
-                camera_index="/dev/video6", fps=30, width=640, height=480, rotation=180
-            ),})
+            # "top_camera": OpenCVCameraConfig(
+            #     camera_index="/dev/video6", fps=30, width=640, height=480, rotation=180
+            # ),
+            })
     
     # 安全控制参数
     max_relative_target: list[float] | float | None = None  # 默认限制每次移动0.1弧度（约5.7度）

@@ -98,7 +98,8 @@ class LeRobotDatasetMetadata:
                 self.revision = get_safe_version(self.repo_id, self.revision)
 
             (self.root / "meta").mkdir(exist_ok=True, parents=True)
-            self.pull_from_repo(allow_patterns="meta/")
+            if root is None:
+                self.pull_from_repo(allow_patterns="meta/")
             self.load_metadata()
 
     def load_metadata(self):
@@ -486,8 +487,10 @@ class LeRobotDataset(torch.utils.data.Dataset):
         self.episode_data_index = get_episode_data_index(self.meta.episodes, self.episodes)
 
         # Check timestamps
-        timestamps = torch.stack(self.hf_dataset["timestamp"]).numpy()
-        episode_indices = torch.stack(self.hf_dataset["episode_index"]).numpy()
+        # Note: Accessing a column from an HF dataset returns a Column (list-like), not tensors.
+        # Convert directly to tensors instead of stacking.
+        timestamps = torch.tensor(self.hf_dataset["timestamp"], dtype=torch.float32).numpy()
+        episode_indices = torch.tensor(self.hf_dataset["episode_index"], dtype=torch.int64).numpy()
         ep_data_index_np = {k: t.numpy() for k, t in self.episode_data_index.items()}
         check_timestamps_sync(timestamps, episode_indices, ep_data_index_np, self.fps, self.tolerance_s)
 
@@ -666,19 +669,30 @@ class LeRobotDataset(torch.utils.data.Dataset):
         query_timestamps = {}
         for key in self.meta.video_keys:
             if query_indices is not None and key in query_indices:
-                timestamps = self.hf_dataset.select(query_indices[key])["timestamp"]
-                query_timestamps[key] = torch.stack(timestamps).tolist()
+                ts_list = self.hf_dataset.select(query_indices[key])["timestamp"]
+                # ts_list elements can be 0-d tensors or 1-d tensors of shape (1,)
+                if isinstance(ts_list[0], torch.Tensor):
+                    query_timestamps[key] = torch.stack(list(ts_list)).flatten().tolist()
+                else:
+                    query_timestamps[key] = torch.tensor(ts_list, dtype=torch.float32).flatten().tolist()
             else:
                 query_timestamps[key] = [current_ts]
 
         return query_timestamps
 
     def _query_hf_dataset(self, query_indices: dict[str, list[int]]) -> dict:
-        return {
-            key: torch.stack(self.hf_dataset.select(q_idx)[key])
-            for key, q_idx in query_indices.items()
-            if key not in self.meta.video_keys
-        }
+        # Selecting a column returns an Arrow Column (list-like). Convert to torch tensors robustly.
+        out: dict[str, torch.Tensor] = {}
+        for key, q_idx in query_indices.items():
+            if key in self.meta.video_keys:
+                continue
+            col = self.hf_dataset.select(q_idx)[key]
+            first_val = col[0]
+            if isinstance(first_val, torch.Tensor):
+                out[key] = torch.stack(list(col))
+            else:
+                out[key] = torch.tensor(col)
+        return out
 
     def _query_videos(self, query_timestamps: dict[str, list[float]], ep_idx: int) -> dict[str, torch.Tensor]:
         """Note: When using data workers (e.g. DataLoader with num_workers>0), do not call this function
