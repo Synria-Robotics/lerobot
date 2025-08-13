@@ -255,10 +255,13 @@ class AliciaDuoRobot:
             raise RobotDeviceNotConnectedError(
                 "AliciaDuoRobot未连接。你需要运行`robot.connect()`。"
             )
+        import pdb
+        pdb.set_trace()
+
         
         # 读取当前状态
-        joint_rad = self.get_joints()
-        gripper_rad = self.get_gripper()
+        joint_rad = self.controller.get_joints()
+        gripper_rad = self.controller.get_gripper()
         
         # 创建观察字典
         obs_dict = {}
@@ -309,8 +312,8 @@ class AliciaDuoRobot:
         # 应用安全限制（如果配置了max_relative_target）
         if self.config.max_relative_target is not None:
             # 读取当前关节位置
-            joint_rad = self.get_joints()
-            gripper_rad = self.get_gripper()
+            joint_rad = self.controller.get_joints()
+            gripper_rad = self.controller.get_gripper()
             current_joint_angles = joint_rad
             
             # 限制关节移动范围
@@ -331,7 +334,8 @@ class AliciaDuoRobot:
             joint_angles = safe_joint_angles
         
         # 发送命令到机械臂
-        self.controller.joint_controller.set_joint_angles(joint_angles, gripper_angle)
+        self.controller.joint_controller.set_joint_angles(joint_angles)
+        self.controller.joint_controller.set_gripper(gripper_angle)
         
         # 返回实际发送的动作
         if gripper_angle is not None:
