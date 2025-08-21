@@ -9,10 +9,10 @@ import torch
 
 # 导入Alicia-D SDK
 try:
-    from alicia_duo_sdk.controller import ArmController
+    from alicia_duo_sdk.controller import get_default_session, ControlApi
 except ImportError:
     logging.warning("未找到Alicia-D SDK。请确保已正确安装`alicia_duo_sdk`包。")
-    ArmController = None
+    ControlApi = None
 
 from lerobot.common.robot_devices.cameras.utils import make_cameras_from_configs
 from lerobot.common.robot_devices.robots.configs import AliciaDuoDualRobotConfig
@@ -25,28 +25,36 @@ class AliciaDuoDualRobot:
     这个类管理两个Alicia-D机械臂，提供统一的接口进行数据记录和控制。
     """
     
-    def __init__(self, config: AliciaDuoDualRobotConfig):
+    def __init__(self, config: AliciaDuoDualRobotConfig, enable_online_smooth=True):
         """初始化双Alicia-D机械臂控制器。
         
         Args:
             config: 双Alicia-D机械臂配置
+            enable_online_smooth: 是否启用在线平滑控制
         """
         self.config = config
         self.robot_type = self.config.type
+        self.enable_online_smooth = enable_online_smooth
         
         # 创建两个机械臂控制器
         self.robots = {}
         for arm_name, arm_config in config.arms.items():
-            if ArmController is not None:
-                self.robots[arm_name] = ArmController(
-                    port=arm_config["port"], 
-                    baudrate=arm_config["baudrate"], 
-                    debug_mode=arm_config.get("debug_mode", False)
-                )
+            session = get_default_session(baudrate=arm_config["baudrate"], port=arm_config["port"])
+            if ControlApi is not None:
+                self.robots[arm_name] = ControlApi(session=session)
             else:
                 self.robots[arm_name] = None
                 if not self.config.mock:
-                    logging.error(f"无法创建{arm_name}的ArmController。请确保已安装Alicia-D SDK。")
+                    logging.error(f"无法创建{arm_name}的ControlApi。请确保已安装Alicia-D SDK。")
+
+            if self.enable_online_smooth and self.robots[arm_name] is not None:
+                self.robots[arm_name].startOnlineSmoothing(
+                    command_rate_hz=200,
+                    max_joint_velocity_rad_s=2.5,
+                    max_joint_accel_rad_s2=1,
+                    max_gripper_velocity_rad_s=1.5,
+                    max_gripper_accel_rad_s2=10.0,
+                )
         
         # 摄像头
         self.cameras = make_cameras_from_configs(self.config.cameras)
@@ -136,12 +144,13 @@ class AliciaDuoDualRobot:
         for arm_name, controller in self.robots.items():
             if controller is None:
                 raise RobotDeviceNotConnectedError(
-                    f"{arm_name}的ArmController未初始化。请确保已安装Alicia-D SDK。"
+                    f"{arm_name}的ControlApi未初始化。请确保已安装Alicia-D SDK。"
                 )
             
-            logging.info(f"正在连接到{arm_name}机械臂...")
-            if not controller.connect():
-                raise RobotDeviceNotConnectedError(f"无法连接到{arm_name}机械臂。请检查连接。")
+            # 注释掉实际的机械臂连接代码，与alicia_duo.py保持一致
+            # logging.info(f"正在连接到{arm_name}机械臂...")
+            # if not controller.connect():
+            #     raise RobotDeviceNotConnectedError(f"无法连接到{arm_name}机械臂。请检查连接。")
         
         # 连接摄像头
         for name in self.cameras:
@@ -169,9 +178,10 @@ class AliciaDuoDualRobot:
         # 读取所有机械臂的状态
         all_states = []
         for arm_name, controller in self.robots.items():
-            state = controller.read_joint_state()
-            joint_angles = torch.tensor(state.angles, dtype=torch.float32)
-            gripper_angle = torch.tensor([state.gripper], dtype=torch.float32)
+            joint_rad = controller.get_joints()
+            gripper_rad = controller.get_gripper()
+            joint_angles = torch.tensor(joint_rad, dtype=torch.float32)
+            gripper_angle = torch.tensor([gripper_rad], dtype=torch.float32)
             arm_state = torch.cat([joint_angles, gripper_angle])
             all_states.append(arm_state)
         
@@ -201,9 +211,10 @@ class AliciaDuoDualRobot:
         # 读取所有机械臂的状态
         all_states = []
         for arm_name, controller in self.robots.items():
-            state = controller.read_joint_state()
-            joint_angles = torch.tensor(state.angles, dtype=torch.float32)
-            gripper_angle = torch.tensor([state.gripper], dtype=torch.float32)
+            joint_rad = controller.get_joints()
+            gripper_rad = controller.get_gripper()
+            joint_angles = torch.tensor(joint_rad, dtype=torch.float32)
+            gripper_angle = torch.tensor([gripper_rad], dtype=torch.float32)
             arm_state = torch.cat([joint_angles, gripper_angle])
             all_states.append(arm_state)
         
@@ -248,7 +259,12 @@ class AliciaDuoDualRobot:
             gripper_angle = arm_action[-1].item() if self.has_gripper else None
             
             # 发送到机械臂
-            controller.set_joint_angles(joint_angles, gripper_angle)
+            if self.enable_online_smooth:
+                controller.setJointTargetOnline(joint_angles)
+                controller.setGripperTargetOnline(gripper_angle)
+            else:
+                controller.joint_controller.set_joint_angles(joint_angles)
+                controller.joint_controller.set_gripper(gripper_angle)
             sent_actions.append(arm_action)
         
         return torch.cat(sent_actions)
@@ -272,7 +288,9 @@ class AliciaDuoDualRobot:
         if not self.config.mock:
             for arm_name, controller in self.robots.items():
                 if controller is not None:
-                    controller.disconnect()
+                    if self.enable_online_smooth:
+                        controller.stopOnlineSmoothing()
+                    controller.session.joint_controller.disconnect()
                     logging.info(f"已断开{arm_name}机械臂")
         
         self.is_connected = False
