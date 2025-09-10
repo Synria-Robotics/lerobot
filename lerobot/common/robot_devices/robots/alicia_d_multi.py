@@ -169,7 +169,7 @@ class AliciaDMultiRobot:
         """执行一步遥操作，可选择记录数据。"""
         if not self.is_connected:
             raise RobotDeviceNotConnectedError(
-                "AliciaDuoDualRobot未连接。你需要运行`robot.connect()`。"
+                "AliciaDMultiRobot未连接。你需要运行`robot.connect()`。"
             )
         
         if not record_data:
@@ -205,7 +205,7 @@ class AliciaDMultiRobot:
         """捕获当前观察（状态+图像）。"""
         if not self.is_connected:
             raise RobotDeviceNotConnectedError(
-                "AliciaDuoDualRobot未连接。你需要运行`robot.connect()`。"
+                "AliciaDMultiRobot未连接。你需要运行`robot.connect()`。"
             )
         
         # 读取所有机械臂的状态
@@ -235,7 +235,7 @@ class AliciaDMultiRobot:
         """发送动作到所有机械臂。"""
         if not self.is_connected:
             raise RobotDeviceNotConnectedError(
-                "AliciaDuoDualRobot未连接。你需要运行`robot.connect()`。"
+                "AliciaDMultiRobot未连接。你需要运行`robot.connect()`。"
             )
         
         # 计算每个机械臂的动作维度

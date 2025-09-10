@@ -89,9 +89,9 @@ def make_robot_from_config(config: RobotConfig):
         
         return AliciaDRobot(config)
     elif isinstance(config, AliciaDMultiRobotConfig):
-        from lerobot.common.robot_devices.robots.alicia_d_multi import AliciaDuoDualRobot
+        from lerobot.common.robot_devices.robots.alicia_d_multi import AliciaDMultiRobot
         
-        return AliciaDuoDualRobot(config)
+        return AliciaDMultiRobot(config)
     else:
         from lerobot.common.robot_devices.robots.stretch import StretchRobot
 

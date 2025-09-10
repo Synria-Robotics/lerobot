@@ -136,14 +136,14 @@ class AliciaDMultiRobotConfig(RobotConfig):
     # 摄像头配置
     cameras: dict[str, CameraConfig] = field(default_factory=lambda: {
         "top_camera": OpenCVCameraConfig(
-            camera_index="/dev/video0", fps=30, width=640, height=480
+            camera_index="/dev/video6", fps=30, width=640, height=480
         ),
         "left_wrist": OpenCVCameraConfig(
-            camera_index="/dev/video2", fps=30, width=640, height=480
+            camera_index="/dev/video7", fps=30, width=640, height=480
         ),
-        "right_wrist": OpenCVCameraConfig(
-            camera_index="/dev/video4", fps=30, width=640, height=480
-        ),
+        # "right_wrist": OpenCVCameraConfig(
+        #     camera_index="/dev/video4", fps=30, width=640, height=480
+        # ),
     })
     
     # 安全控制参数

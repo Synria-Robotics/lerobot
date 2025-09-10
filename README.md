@@ -134,7 +134,7 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
 *   `--control.reset_time_s=30`: 每个回合结束后，给您多少时间来重置场景或机械臂到初始状态。
 *   `--control.push_to_hub=false`: 是否在数据收集完成后自动将数据集上传到 Hugging Face Hub。初次使用建议设为 `false`。
 *   `--robot.port=""`: (可选) 指定机械臂连接的串口。留空则自动搜索。如果自动搜索失败，请手动设置：Linux 示例 `"/dev/ttyUSB0"`，Windows 示例 `COM3`（将其替换为设备管理器中显示的实际端口）。
-*   `--robot.baudrate=921600`: (可选) 串口通信的波特率。Alicia-D 通常使用 921600，这是默认值。
+*   `--robot.baudrate=1000000`: (可选) 串口通信的波特率。Alicia-D 通常使用 921600，这是默认值。
 
 **添加摄像头 (可选):**
 
@@ -155,7 +155,7 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
         
         # 串口设置
         port: str = ""  # 留空则自动搜索
-        baudrate: int = 921600
+        baudrate: int = 1000000
         debug_mode: bool = False
         
         # 摄像头配置
@@ -210,7 +210,18 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
 **示例命令 (假设摄像头已在 `configs.py` 中配置):**
 
 ```bash
-python lerobot/scripts/control_robot.py --robot.type=alicia_d --control.type=record  --control.fps=30  --control.single_task="演示如何用Alicia-D机械臂移动一个方块"  --control.root=D:\\Github\\Synria-Robotics\\lerobot\\datasets\\alicia_demo  --control.repo_id=YOUR_HF_USERNAME/alicia_demo_dataset  --control.num_episodes=5  --control.warmup_time_s=5  --control.episode_time_s=60  --control.reset_time_s=20  --control.push_to_hub=false
+python lerobot/scripts/control_robot.py \
+    --robot.type=alicia_d \
+    --control.type=record  \
+    --control.fps=30  \
+    --control.single_task="演示如何用Alicia-D机械臂移动一个方块" \
+    --control.root=D:\\Github\\Synria-Robotics\\lerobot\\datasets\\alicia_demo \
+    --control.repo_id=YOUR_HF_USERNAME/alicia_demo_dataset \
+    --control.num_episodes=5  \
+    --control.warmup_time_s=5  \
+    --control.episode_time_s=60  \
+    --control.reset_time_s=20  \
+    --control.push_to_hub=false
 ```
 **请务必将 `/home/YOUR_USERNAME/lerobot_datasets/alicia_demo` 和 `YOUR_HF_USERNAME/alicia_demo_dataset` 替换为您自己的路径和名称。**
 
@@ -218,19 +229,23 @@ python lerobot/scripts/control_robot.py --robot.type=alicia_d --control.type=rec
 如果您已在 `lerobot/common/robot_devices/robots/configs.py` 中的 `AliciaDRobotConfig` 配置了摄像头，则运行数据收集脚本时，无需在命令行中再次指定摄像头参数。脚本会自动加载 `configs.py` 中的设置。
 
 **一套遥操作套件**（一个操作臂一个示教臂）
+
 ```bash
+export XDG_RUNTIME_DIR=/tmp
 python lerobot/scripts/control_robot.py \
-    --robot.type=alicia_d \
-    --control.type=record \
-    --control.fps=30 \
-    --control.single_task="演示如何用Alicia-D机械臂移动一个方块（带视觉）" \
-    --control.root=/home/ubuntu/lerobot_datasets/alicia_visual_demo \
-    --control.repo_id=ubuntu/alicia_visual_demo_dataset \
-    --control.num_episodes=5 \
-    --control.warmup_time_s=10 \
-    --control.episode_time_s=18 \
-    --control.reset_time_s=20 \
-    --control.push_to_hub=false
+  --robot.type=alicia_d \
+  --control.type=record \
+  --control.fps=30 \
+  --control.root=/home/ubuntu/lerobot_datasets/alicia_visual_demo_v2 \
+  --control.repo_id=ubuntu/alicia_visual_demo_dataset \
+  --control.num_episodes=5 \
+  --control.warmup_time_s=10 \
+  --control.episode_time_s=18 \
+  --control.reset_time_s=20 \
+  --control.push_to_hub=false \
+  --control.play_sounds=false \
+  --control.single_task="pick and place demo" \
+  --control.display_data=true
 ```
 
 **两套遥操作套件**（两个操作臂两个示教臂）
@@ -296,7 +311,7 @@ python lerobot/scripts/control_robot.py \
     *   在 Linux 上，您可能需要串口的读写权限。尝试将您的用户添加到 `dialout` 组：`sudo usermod -a -G dialout $USER`，然后**重启计算机**或重新登录。
 
 *   **"AttributeError: 'AliciaDuoRobot' object has no attribute 'some_feature'"**:
-    *   这通常表示 Alicia-D 的 LeRobot 驱动实现 (`alicia_duo.py`) 可能缺少了框架期望的某些属性或方法。请确保您使用的是最新或兼容版本的 LeRobot 和 Alicia-D 驱动。如果问题是最近集成的，可能需要开发者进一步调试。
+    *   这通常表示 Alicia-D 的 LeRobot 驱动实现 (`alicia_d.py`) 可能缺少了框架期望的某些属性或方法。请确保您使用的是最新或兼容版本的 LeRobot 和 Alicia-D 驱动。如果问题是最近集成的，可能需要开发者进一步调试。
 
 *   **摄像头无法工作或报错**:
     *   确保摄像头已正确连接到 USB 端口。

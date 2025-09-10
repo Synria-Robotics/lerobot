@@ -271,7 +271,7 @@ def control_loop(
         if (display_data and not is_headless()) or (display_data and robot.robot_type.startswith("lekiwi")):
             for k, v in action.items():
                 for i, vv in enumerate(v):
-                    rr.log(f"sent_{k}_{i}", rr.Scalar(vv.numpy()))
+                    rr.log(f"sent_{k}_{i}", rr.Scalars(float(vv)))
                     #print(f"Sent action {k} for index {i}: {vv.numpy()}")
 
             image_keys = [key for key in observation if "image" in key]
