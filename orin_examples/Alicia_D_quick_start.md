@@ -63,7 +63,7 @@ python lerobot/scripts/control_robot.py \
 ```
 @RobotConfig.register_subclass("alicia_duo")
 @dataclass
-class AliciaDuoRobotConfig(RobotConfig):
+class AliciaDRobotConfig(RobotConfig):
     """Alicia-D机械臂的配置类"""
     
     # 串口设置

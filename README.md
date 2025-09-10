@@ -18,7 +18,7 @@
 ## 1. 系统要求
 
 *   **操作系统**: 推荐使用 Linux (例如 Ubuntu 20.04 或更高版本)。本指南主要基于 Linux 环境。
-*   **Python**: 版本 3.8 或更高。
+*   **Python**: 版本 3.10 或更高。
 *   **硬件**:
     *   Alicia-D 机械臂。
     *   一台用于连接和控制机械臂的计算机。
@@ -27,31 +27,8 @@
 
 ---
 
-## 2. 安装 Alicia-D SDK
 
-Alicia-D SDK (Software Development Kit) 是控制 Alicia-D 机械臂和读取其数据的核心软件库。
-
-1.  **获取 SDK**:
-    请从 Alicia-D 官方渠道获取最新的 SDK 压缩包或 Git 仓库地址。假设您已将其下载并解压到名为 `Alicia_duo_sdk` 的文件夹。
-
-2.  **安装 SDK**:
-    打开您的终端 (Terminal)，进入到 SDK 所在的目录，然后使用 pip (Python 的包安装器) 进行安装。
-
-    ```bash
-    # 导航到您的 SDK 文件夹，请将 /path/to/Alicia-D-SDK 替换为实际路径
-    cd /path/to/Alicia-D-SDK
-
-    # 使用 pip 安装 SDK
-    # '-e .' 表示以"可编辑"模式安装，这样如果您修改了 SDK 源码，更改会立即生效
-    pip install -e .
-    ```
-
-    *   **提示**: 如果 `pip` 命令未找到，您可能需要先安装 Python 和 pip。您可以搜索 "如何安装 Python 和 pip on [您的操作系统]" 来获取指导。
-    *   如果您遇到权限问题，可能需要在命令前加上 `sudo` (例如 `sudo pip install -e .`)，但这通常不推荐，更好的做法是使用虚拟环境 (见下方 LeRobot 安装部分)。
-
----
-
-## 3. 安装 LeRobot 框架
+## 2. 安装 LeRobot 框架
 
 LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制 Alicia-D 并收集数据。
 
@@ -62,8 +39,12 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     # 导航到您希望存放 LeRobot 项目的文件夹
     cd /path/to/your/projects_directory
 
-    # 克隆 LeRobot 仓库
-    git clone https://github.com/Synria-Robotics/lerobot.git -b v5.0.0
+    # For Alicia-D-SDK not installed:
+    git clone --recursive git@github.com:Synria-Robotics/lerobot.git -b v5.5.0
+    # For ALicia-D-SDK installed:
+    git clone https://github.com/Synria-Robotics/lerobot.git -b v5.5.0
+
+
     # 进入 LeRobot 文件夹
     cd lerobot
     ```
@@ -77,16 +58,29 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     ```
     安装环境依赖：
     ```bash
-    pip install ffmpeg
+    conda install ffmpeg -c conda-forge
     ```
 
 
-3.  **安装 LeRobot 及其依赖**:
-    在激活的虚拟环境中，使用 pip 安装 LeRobot。
+3. **安装 Alicia-D SDK**
+
+    Alicia-D SDK (Software Development Kit) 是控制 Alicia-D 机械臂和读取其数据的核心软件库。
+    ```
+    # cd /path/to/Alicia-D-SDK
+    cd Alicia-D-SDK
+    # 使用 pip 安装 SDK
+    pip install -r requirement.txt
+    pip install -e .
+    ```
+
+---
+
+4.  **安装 LeRobot 及其依赖**:
 
     ```bash
     # 确保您在 lerobot 文件夹的根目录下
     # 安装 LeRobot 及其核心依赖
+    cd .. # Enter the path for lerobot setup
     pip install -e .
     ```
     这将安装 LeRobot 框架本身以及运行它所必需的库。
@@ -121,15 +115,14 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     注意事项：
     - 若首次连接后未识别端口，可能需要安装对应的 USB 转串口驱动（常见为 CH340 或 CP210x），可从芯片官方或硬件厂商处下载并安装。
     - 确保没有其他程序占用该串口（如串口调试助手等）。
-    - 保持默认波特率 `921600`；如需修改，请与设备端设置一致。
-
+    - 保持默认波特率 `1000000`；如需修改，请与设备端设置一致。
 ---
 
 ## 5. 配置数据收集参数
 
 LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键参数：
 
-*   `--robot.type=alicia_duo`: 指定我们要使用的机器人类型是 Alicia-D。
+*   `--robot.type=alicia_d`: 指定我们要使用的机器人类型是 Alicia-D。
 *   `--control.type=record`: 指定我们要执行的任务是数据记录。
 *   `--control.fps=30`: 设置数据记录的帧率 (每秒捕获多少帧数据)。常用的值是 15、30。
 *   `--control.single_task="在这里描述您的任务"`: 对您正在演示或记录的任务进行简短描述，例如 `"机械臂抓取红色的积木并放入盒子中"`。
@@ -150,14 +143,14 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
 1.  **打开配置文件**:
     找到并打开 `lerobot/common/robot_devices/robots/configs.py` 文件。
 
-2.  **修改 `AliciaDuoRobotConfig`**:
-    在该文件中，找到 `AliciaDuoRobotConfig` 类。您可以修改其 `cameras` 属性来定义您的摄像头。
+2.  **修改 `AliciaDRobotConfig`**:
+    在该文件中，找到 `AliciaDRobotConfig` 类。您可以修改其 `cameras` 属性来定义您的摄像头。
 
     下面是一个示例，展示了如何配置一个名为 "front" 的前置USB摄像头和一个名为 "wrist" 的腕部USB摄像头:
     ```python
-    @RobotConfig.register_subclass("alicia_duo")
+    @RobotConfig.register_subclass("alicia_d")
     @dataclass
-    class AliciaDuoRobotConfig(RobotConfig):
+    class AliciaDRobotConfig(RobotConfig):
         """Alicia-D机械臂的配置类"""
         
         # 串口设置
@@ -217,22 +210,22 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
 **示例命令 (假设摄像头已在 `configs.py` 中配置):**
 
 ```bash
-python lerobot/scripts/control_robot.py --robot.type=alicia_duo --control.type=record  --control.fps=30  --control.single_task="演示如何用Alicia-D机械臂移动一个方块"  --control.root=D:\\Github\\Synria-Robotics\\lerobot\\datasets\\alicia_demo  --control.repo_id=YOUR_HF_USERNAME/alicia_demo_dataset  --control.num_episodes=5  --control.warmup_time_s=5  --control.episode_time_s=60  --control.reset_time_s=20  --control.push_to_hub=false
+python lerobot/scripts/control_robot.py --robot.type=alicia_d --control.type=record  --control.fps=30  --control.single_task="演示如何用Alicia-D机械臂移动一个方块"  --control.root=D:\\Github\\Synria-Robotics\\lerobot\\datasets\\alicia_demo  --control.repo_id=YOUR_HF_USERNAME/alicia_demo_dataset  --control.num_episodes=5  --control.warmup_time_s=5  --control.episode_time_s=60  --control.reset_time_s=20  --control.push_to_hub=false
 ```
 **请务必将 `/home/YOUR_USERNAME/lerobot_datasets/alicia_demo` 和 `YOUR_HF_USERNAME/alicia_demo_dataset` 替换为您自己的路径和名称。**
 
 **示例命令 (带一个前置摄像头):**
-如果您已在 `lerobot/common/robot_devices/robots/configs.py` 中的 `AliciaDuoRobotConfig` 配置了摄像头，则运行数据收集脚本时，无需在命令行中再次指定摄像头参数。脚本会自动加载 `configs.py` 中的设置。
+如果您已在 `lerobot/common/robot_devices/robots/configs.py` 中的 `AliciaDRobotConfig` 配置了摄像头，则运行数据收集脚本时，无需在命令行中再次指定摄像头参数。脚本会自动加载 `configs.py` 中的设置。
 
 **一套遥操作套件**（一个操作臂一个示教臂）
 ```bash
 python lerobot/scripts/control_robot.py \
-    --robot.type=alicia_duo \
+    --robot.type=alicia_d \
     --control.type=record \
     --control.fps=30 \
     --control.single_task="演示如何用Alicia-D机械臂移动一个方块（带视觉）" \
-    --control.root=/home/YOUR_USERNAME/lerobot_datasets/alicia_visual_demo \
-    --control.repo_id=YOUR_HF_USERNAME/alicia_visual_demo_dataset \
+    --control.root=/home/ubuntu/lerobot_datasets/alicia_visual_demo \
+    --control.repo_id=ubuntu/alicia_visual_demo_dataset \
     --control.num_episodes=5 \
     --control.warmup_time_s=10 \
     --control.episode_time_s=18 \
@@ -243,11 +236,11 @@ python lerobot/scripts/control_robot.py \
 **两套遥操作套件**（两个操作臂两个示教臂）
 ```bash
 python lerobot/scripts/control_robot.py \
-    --robot.type=alicia_duo_dual \
+    --robot.type=alicia_d_multi \
     --control.type=record \
     --control.fps=30 \
     --control.single_task="演示如何用Alicia-D机械臂移动一个方块（带视觉）" \
-    --control.root=/home/YOUR_USERNAME/lerobot_datasets/alicia_visual_demo  \
+    --control.root=/home/ubuntu/lerobot_datasets/alicia_visual_demo  \
     --control.repo_id=ubuntu/alicia_visual_demo_dataset \
     --control.num_episodes=10 \
     --control.warmup_time_s=10 \
@@ -312,7 +305,7 @@ python lerobot/scripts/control_robot.py \
 
 *   **数据记录频率不理想**:
     *   如果 `--control.fps` 设置得很高，但实际感觉卡顿或日志显示帧率较低，可能是计算机性能瓶颈，或者摄像头/机械臂通信延迟。
-    *   确保您的 `--robot.max_relative_target` (在 `lerobot/common/robot_devices/robots/configs.py` 中 `AliciaDuoRobotConfig` 定义或通过命令行覆盖) 设置合理，以允许平滑运动。
+    *   确保您的 `--robot.max_relative_target` (在 `lerobot/common/robot_devices/robots/configs.py` 中 `AliciaDRobotConfig` 定义或通过命令行覆盖) 设置合理，以允许平滑运动。
 
 如果您遇到其他问题，建议查看终端输出的详细错误信息，并可以查阅 LeRobot 的 GitHub Issues 或向 Synria Robotics 技术支持寻求帮助。
 

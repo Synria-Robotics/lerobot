@@ -9,23 +9,23 @@ import torch
 
 # 导入Alicia-D SDK
 try:
-    from alicia_duo_sdk.controller import get_default_session, ControlApi
+    from alicia_d_sdk.controller import get_default_session, ControlApi
 except ImportError:
-    logging.warning("未找到Alicia-D SDK。请确保已正确安装`alicia_duo_sdk`包。")
+    logging.warning("未找到Alicia-D SDK。请确保已正确安装`alicia_d_sdk`包。")
     ControlApi = None
 
 from lerobot.common.robot_devices.cameras.utils import make_cameras_from_configs
-from lerobot.common.robot_devices.robots.configs import AliciaDuoDualRobotConfig
+from lerobot.common.robot_devices.robots.configs import AliciaDMultiRobotConfig
 from lerobot.common.robot_devices.utils import RobotDeviceAlreadyConnectedError, RobotDeviceNotConnectedError
 
 
-class AliciaDuoDualRobot:
+class AliciaDMultiRobot:
     """双Alicia-D机械臂的控制类实现。
     
     这个类管理两个Alicia-D机械臂，提供统一的接口进行数据记录和控制。
     """
     
-    def __init__(self, config: AliciaDuoDualRobotConfig, enable_online_smooth=True):
+    def __init__(self, config: AliciaDMultiRobotConfig, enable_online_smooth=True):
         """初始化双Alicia-D机械臂控制器。
         
         Args:

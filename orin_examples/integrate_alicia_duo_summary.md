@@ -4,7 +4,7 @@
 
 ## 已完成的工作
 
-1. **配置类 - AliciaDuoRobotConfig**
+1. **配置类 - AliciaDRobotConfig**
    - 添加到`lerobot/common/robot_devices/robots/configs.py`
    - 使用`@RobotConfig.register_subclass("alicia_duo")`注册
    - 包含机械臂的基本参数：端口、波特率、调试模式等

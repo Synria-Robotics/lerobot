@@ -20,7 +20,7 @@ import torch
 
 # Alicia-D SDK
 try:
-    from alicia_duo_sdk.controller import get_default_session, ControlApi
+    from alicia_d_sdk.controller import get_default_session, ControlApi
 except ImportError:
     # Fallback for local import if the SDK is not installed but present in the repo
     import sys
@@ -29,7 +29,7 @@ except ImportError:
     sdk_root = repo_root / "Alicia-D-SDK"
     if str(sdk_root) not in sys.path:
         sys.path.append(str(sdk_root))
-    from alicia_duo_sdk.controller import get_default_session, ControlApi  # type: ignore
+    from alicia_d_sdk.controller import get_default_session, ControlApi  # type: ignore
 
 # LeRobot dataset
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset

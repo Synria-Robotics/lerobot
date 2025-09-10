@@ -22,17 +22,17 @@ import torch
 
 # 导入Alicia-D SDK
 try:
-    from alicia_duo_sdk.controller import get_default_session, ControlApi
+    from alicia_d_sdk.controller import get_default_session, ControlApi
 except ImportError:
-    logging.warning("未找到Alicia-D SDK。请确保已正确安装`alicia_duo_sdk`包。")
+    logging.warning("未找到Alicia-D SDK。请确保已正确安装`alicia_d_sdk`包。")
     ControlApi = None
 
 from lerobot.common.robot_devices.cameras.utils import make_cameras_from_configs
-from lerobot.common.robot_devices.robots.configs import AliciaDuoRobotConfig
+from lerobot.common.robot_devices.robots.configs import AliciaDRobotConfig
 from lerobot.common.robot_devices.utils import RobotDeviceAlreadyConnectedError, RobotDeviceNotConnectedError
 
 
-class AliciaDuoRobot:
+class AliciaDRobot:
     """Alicia-D机械臂的控制类实现。
     
     这个类包装了Alicia-D SDK的ControlApi，提供了与LeRobot框架兼容的接口。
@@ -40,16 +40,16 @@ class AliciaDuoRobot:
     
     实例化示例:
     ```python
-    robot = AliciaDuoRobot(AliciaDuoRobotConfig())
+    robot = AliciaDuoRobot(AliciaDRobotConfig())
     ```
     
     在实例化过程中覆盖端口和波特率的示例:
     ```python
-    robot = AliciaDuoRobot(AliciaDuoRobotConfig(port="/dev/ttyUSB0", baudrate=921600))
+    robot = AliciaDuoRobot(AliciaDRobotConfig(port="/dev/ttyUSB0", baudrate=921600))
     ```
     """
     
-    def __init__(self, config: AliciaDuoRobotConfig, enable_online_smooth=True):
+    def __init__(self, config: AliciaDRobotConfig, enable_online_smooth=True):
         """初始化Alicia-D机械臂控制器。
         
         Args:
@@ -79,7 +79,9 @@ class AliciaDuoRobot:
         
         # 创建控制器
         if ControlApi is not None:
-            self.session = get_default_session(baudrate=self.baudrate)
+            print("baudrate", self.baudrate)
+            self.session = get_default_session(port=self.port, baudrate=self.baudrate)
+            print("session:", self.session)
             self.controller = ControlApi(session=self.session)
         else:
             self.controller = None

@@ -11,7 +11,7 @@
 pip install -e .
 
 # 安装Alicia-D SDK
-cd /path/to/Alicia_duo_sdk
+cd /path/to/alicia_d_sdk
 pip install -e .
 ```
 
@@ -151,7 +151,7 @@ robot:
 
 如果需要更深入地自定义Alicia-D机械臂的行为，可以修改以下文件：
 
-- `lerobot/common/robot_devices/robots/configs.py`中的`AliciaDuoRobotConfig`类
+- `lerobot/common/robot_devices/robots/configs.py`中的`AliciaDRobotConfig`类
 - `lerobot/common/robot_devices/robots/alicia_duo.py`中的`AliciaDuoRobot`类
 
 ## 进一步学习

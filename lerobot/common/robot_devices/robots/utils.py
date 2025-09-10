@@ -24,8 +24,8 @@ from lerobot.common.robot_devices.robots.configs import (
     RobotConfig,
     So100RobotConfig,
     StretchRobotConfig,
-    AliciaDuoRobotConfig,
-    AliciaDuoDualRobotConfig,
+    AliciaDRobotConfig,
+    AliciaDMultiRobotConfig,
 )
 
 
@@ -66,9 +66,9 @@ def make_robot_config(robot_type: str, **kwargs) -> RobotConfig:
     elif robot_type == "lekiwi":
         return LeKiwiRobotConfig(**kwargs)
     elif robot_type == "alicia_duo":
-        return AliciaDuoRobotConfig(**kwargs)
+        return AliciaDRobotConfig(**kwargs)
     elif robot_type == "alicia_duo_dual":
-        return AliciaDuoDualRobotConfig(**kwargs)
+        return AliciaDMultiRobotConfig(**kwargs)
     else:
         raise ValueError(f"Robot type '{robot_type}' is not available.")
 
@@ -84,12 +84,12 @@ def make_robot_from_config(config: RobotConfig):
         from lerobot.common.robot_devices.robots.mobile_manipulator import MobileManipulator
 
         return MobileManipulator(config)
-    elif isinstance(config, AliciaDuoRobotConfig):
-        from lerobot.common.robot_devices.robots.alicia_duo import AliciaDuoRobot
+    elif isinstance(config, AliciaDRobotConfig):
+        from lerobot.common.robot_devices.robots.alicia_d import AliciaDRobot
         
-        return AliciaDuoRobot(config)
-    elif isinstance(config, AliciaDuoDualRobotConfig):
-        from lerobot.common.robot_devices.robots.alicia_duo_dual import AliciaDuoDualRobot
+        return AliciaDRobot(config)
+    elif isinstance(config, AliciaDMultiRobotConfig):
+        from lerobot.common.robot_devices.robots.alicia_d_multi import AliciaDuoDualRobot
         
         return AliciaDuoDualRobot(config)
     else:

@@ -81,6 +81,84 @@ class ManipulatorRobotConfig(RobotConfig):
                     )
 
 
+@RobotConfig.register_subclass("alicia_d")
+@dataclass
+class AliciaDRobotConfig(RobotConfig):
+    """Alicia-D机械臂的配置类"""
+    
+    # 串口设置
+    port: str = ""  # 留空则自动搜索
+    baudrate: int = 1000000
+    # debug_mode: bool = True
+    debug_mode: bool = False
+    
+    # 摄像头配置
+    cameras: dict[str, CameraConfig] = field(default_factory=lambda: {
+            "wrist_camera": OpenCVCameraConfig(
+                camera_index=7, fps=30, width=640, height=480, rotation=90
+            ),
+            # "top_camera": OpenCVCameraConfig(
+            #     camera_index="/dev/video6", fps=30, width=640, height=480, rotation=180
+            # ),
+            })
+    
+    # 安全控制参数
+    max_relative_target: list[float] | float | None = None  # 默认限制每次移动0.1弧度（约5.7度）
+    
+    # 模拟模式
+    mock: bool = False
+    
+    def __post_init__(self):
+        if self.mock:
+            for cam in self.cameras.values():
+                if not cam.mock:
+                    cam.mock = True
+
+@RobotConfig.register_subclass("alicia_d_multi")
+@dataclass
+class AliciaDMultiRobotConfig(RobotConfig):
+    """双Alicia-D机械臂的配置类"""
+    
+    # 机械臂配置
+    arms: dict[str, dict] = field(default_factory=lambda: {
+        "left": {
+            "port": "/dev/ttyUSB0",
+            "baudrate": 1000000,
+            "debug_mode": False,
+        },
+        "right": {
+            "port": "/dev/ttyUSB1", 
+            "baudrate": 1000000,
+            "debug_mode": False,
+        }
+    })
+    
+    # 摄像头配置
+    cameras: dict[str, CameraConfig] = field(default_factory=lambda: {
+        "top_camera": OpenCVCameraConfig(
+            camera_index="/dev/video0", fps=30, width=640, height=480
+        ),
+        "left_wrist": OpenCVCameraConfig(
+            camera_index="/dev/video2", fps=30, width=640, height=480
+        ),
+        "right_wrist": OpenCVCameraConfig(
+            camera_index="/dev/video4", fps=30, width=640, height=480
+        ),
+    })
+    
+    # 安全控制参数
+    max_relative_target: list[float] | float | None = None
+    
+    # 模拟模式
+    mock: bool = False
+    
+    def __post_init__(self):
+        if self.mock:
+            for cam in self.cameras.values():
+                if not cam.mock:
+                    cam.mock = True
+
+
 @RobotConfig.register_subclass("aloha")
 @dataclass
 class AlohaRobotConfig(ManipulatorRobotConfig):
@@ -613,79 +691,3 @@ class LeKiwiRobotConfig(RobotConfig):
     mock: bool = False
 
 
-@RobotConfig.register_subclass("alicia_duo")
-@dataclass
-class AliciaDuoRobotConfig(RobotConfig):
-    """Alicia-D机械臂的配置类"""
-    
-    # 串口设置
-    port: str = ""  # 留空则自动搜索
-    baudrate: int = 921600
-    # debug_mode: bool = True
-    debug_mode: bool = False
-    
-    # 摄像头配置
-    cameras: dict[str, CameraConfig] = field(default_factory=lambda: {
-            "wrist_camera": OpenCVCameraConfig(
-                camera_index=1, fps=30, width=640, height=480, rotation=90
-            ),
-            # "top_camera": OpenCVCameraConfig(
-            #     camera_index="/dev/video6", fps=30, width=640, height=480, rotation=180
-            # ),
-            })
-    
-    # 安全控制参数
-    max_relative_target: list[float] | float | None = None  # 默认限制每次移动0.1弧度（约5.7度）
-    
-    # 模拟模式
-    mock: bool = False
-    
-    def __post_init__(self):
-        if self.mock:
-            for cam in self.cameras.values():
-                if not cam.mock:
-                    cam.mock = True
-
-@RobotConfig.register_subclass("alicia_duo_dual")
-@dataclass
-class AliciaDuoDualRobotConfig(RobotConfig):
-    """双Alicia-D机械臂的配置类"""
-    
-    # 机械臂配置
-    arms: dict[str, dict] = field(default_factory=lambda: {
-        "left": {
-            "port": "/dev/ttyUSB0",
-            "baudrate": 921600,
-            "debug_mode": False,
-        },
-        "right": {
-            "port": "/dev/ttyUSB1", 
-            "baudrate": 921600,
-            "debug_mode": False,
-        }
-    })
-    
-    # 摄像头配置
-    cameras: dict[str, CameraConfig] = field(default_factory=lambda: {
-        "top_camera": OpenCVCameraConfig(
-            camera_index="/dev/video0", fps=30, width=640, height=480
-        ),
-        "left_wrist": OpenCVCameraConfig(
-            camera_index="/dev/video2", fps=30, width=640, height=480
-        ),
-        "right_wrist": OpenCVCameraConfig(
-            camera_index="/dev/video4", fps=30, width=640, height=480
-        ),
-    })
-    
-    # 安全控制参数
-    max_relative_target: list[float] | float | None = None
-    
-    # 模拟模式
-    mock: bool = False
-    
-    def __post_init__(self):
-        if self.mock:
-            for cam in self.cameras.values():
-                if not cam.mock:
-                    cam.mock = True

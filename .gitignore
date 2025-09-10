@@ -20,7 +20,7 @@ wandb
 # Data
 data/
 outputs/
-Alicia_duo_sdk/
+alicia_d_sdk/
 
 # Apple
 .DS_Store
