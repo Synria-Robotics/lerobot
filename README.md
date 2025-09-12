@@ -101,6 +101,12 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     ```
     LeRobot 框架中的 Alicia-D 驱动默认会自动搜索可用的串口。如果自动搜索失败，您可能需要手动指定端口号。
 
+    ```
+    # Add serial port permission
+    sudo chmod 666 /dev/ttyUSB*  # temporally
+    sudo usermod -a -G dialout $USER  # permanently
+    ```
+
 3.  **检查连接 (Windows)**:
     在 Windows 系统上，连接机械臂后，它会显示为一个 `COM` 串口（例如 `COM3`、`COM5`）。您可以通过以下方式查看端口：
 
@@ -127,7 +133,7 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
 *   `--control.fps=30`: 设置数据记录的帧率 (每秒捕获多少帧数据)。常用的值是 15、30。
 *   `--control.single_task="在这里描述您的任务"`: 对您正在演示或记录的任务进行简短描述，例如 `"机械臂抓取红色的积木并放入盒子中"`。
 *   `--control.root=/path/to/your/datasets/my_alicia_dataset`: 指定收集的数据集存储在本地计算机的哪个文件夹。请确保此路径存在，或者 LeRobot 有权限创建它。
-*   `--control.repo_id=username/my_alicia_hf_dataset_name`: (可选，但推荐) 指定一个 Hugging Face Hub 上的仓库 ID。即使您暂时不上传 (`--control.push_to_hub=false`)，这也是一个好的命名习惯。格式通常是 `您的HuggingFace用户名/数据集名称`。
+*   `--control.repo_id=username/dataset_name`: (**必需**) 指定数据集标识符。必须使用 `用户名/数据集名称` 的格式（例如：`my_user/alicia_demo`）。即使您不上传到 Hugging Face Hub (`--control.push_to_hub=false`)，这个格式也是必需的。
 *   `--control.num_episodes=10`: 您希望记录多少个 "回合" 或 "演示" 的数据。
 *   `--control.warmup_time_s=5`: 每个回合开始前，等待多少秒。这给您时间准备。
 *   `--control.episode_time_s=60`: 每个回合计划记录多长时间 (秒)。
@@ -215,15 +221,15 @@ python lerobot/scripts/control_robot.py \
     --control.type=record  \
     --control.fps=30  \
     --control.single_task="演示如何用Alicia-D机械臂移动一个方块" \
-    --control.root=D:\\Github\\Synria-Robotics\\lerobot\\datasets\\alicia_demo \
-    --control.repo_id=YOUR_HF_USERNAME/alicia_demo_dataset \
+    --control.root=/home/ubuntu/lerobot_datasets \
+    --control.repo_id=ubuntu/alicia_demo_dataset \
     --control.num_episodes=5  \
     --control.warmup_time_s=5  \
     --control.episode_time_s=60  \
     --control.reset_time_s=20  \
     --control.push_to_hub=false
 ```
-**请务必将 `/home/YOUR_USERNAME/lerobot_datasets/alicia_demo` 和 `YOUR_HF_USERNAME/alicia_demo_dataset` 替换为您自己的路径和名称。**
+**请务必将 `/home/ubuntu/lerobot_datasets` 和 `ubuntu/alicia_demo_dataset` 替换为您自己的路径和数据集标识符（用户名/数据集名称格式）。**
 
 **示例命令 (带一个前置摄像头):**
 如果您已在 `lerobot/common/robot_devices/robots/configs.py` 中的 `AliciaDRobotConfig` 配置了摄像头，则运行数据收集脚本时，无需在命令行中再次指定摄像头参数。脚本会自动加载 `configs.py` 中的设置。
@@ -236,14 +242,14 @@ python lerobot/scripts/control_robot.py \
   --robot.type=alicia_d \
   --control.type=record \
   --control.fps=30 \
-  --control.root=/home/ubuntu/lerobot_datasets/alicia_visual_demo_v2 \
-  --control.repo_id=ubuntu/alicia_visual_demo_dataset \
-  --control.num_episodes=5 \
-  --control.warmup_time_s=10 \
-  --control.episode_time_s=18 \
-  --control.reset_time_s=20 \
-  --control.push_to_hub=false \
   --control.play_sounds=false \
+  --control.root=/home/ubuntu/lerobot_datasets \
+  --control.repo_id=ubuntu/alicia_visual_demo_v2 \
+  --control.num_episodes=5 \
+  --control.warmup_time_s=2 \
+  --control.episode_time_s=5 \
+  --control.reset_time_s=5 \
+  --control.push_to_hub=false \
   --control.single_task="pick and place demo" \
   --control.display_data=true
 ```
@@ -254,9 +260,10 @@ python lerobot/scripts/control_robot.py \
     --robot.type=alicia_d_multi \
     --control.type=record \
     --control.fps=30 \
+    --control.play_sounds=false \
     --control.single_task="演示如何用Alicia-D机械臂移动一个方块（带视觉）" \
-    --control.root=/home/ubuntu/lerobot_datasets/alicia_visual_demo  \
-    --control.repo_id=ubuntu/alicia_visual_demo_dataset \
+    --control.root=/home/ubuntu/lerobot_datasets_multi \
+    --control.repo_id=ubuntu/alicia_visual_demo_multi \
     --control.num_episodes=10 \
     --control.warmup_time_s=10 \
     --control.episode_time_s=18 \
@@ -283,12 +290,49 @@ python lerobot/scripts/control_robot.py \
 ---
 
 ## 7. 数据集训练
-```
-    python lerobot/scripts/train.py \
+
+LeRobot 支持两种数据集训练方式：使用本地数据集和使用 HuggingFace Hub 上的数据集。两种方式都使用相同的 `repo_id` 格式，主要区别在于是否需要 `root` 参数：
+
+- **本地数据集**: `repo_id` 使用 `username/dataset_name` 格式，需要配合 `root` 参数指定数据集的父目录
+- **HuggingFace Hub 数据集**: `repo_id` 使用 `username/dataset_name` 格式，无需 `root` 参数（自动从 Hub 下载）
+
+### 本地数据集训练
+对于本地数据集，使用与数据收集时相同的 `repo_id` 格式（`username/dataset_name`），`root` 参数应该指向包含数据集的父目录：
+
+**重要说明**: 
+- 本地数据集目录结构：`root_directory/username/dataset_name/`
+- 数据收集时创建的文件夹结构会是：`/your/root/path/username/dataset_name/`
+
+**配置方法**:
+- `repo_id`: 与数据收集时使用的相同格式（例如 `my_user/alicia_visual_demo_dataset`）
+- `root`: 包含数据集文件夹的父目录路径（例如 `/home/ubuntu/lerobot_datasets`）
+
+```bash
+python lerobot/scripts/train.py \
     --policy.type=diffusion \
-    --dataset.repo_id = path_to_dataset \
-    --output_dir=path_to_training_result
+    --dataset.repo_id=username/dataset_name \
+    --dataset.root=/path/to/parent/directory \
+    --output_dir=/path/to/training_result
 ```
+
+**示例**:
+```bash
+python lerobot/scripts/train.py \
+    --policy.type=diffusion \
+    --dataset.repo_id=ubuntu/alicia_visual_demo_dataset \
+    --dataset.root=/home/ubuntu/lerobot_datasets \
+    --output_dir=/home/ubuntu/lerobot_trained_result
+```
+
+### HuggingFace Hub 数据集训练
+对于 HuggingFace Hub 上的数据集，只需要指定 `repo_id`：
+```bash
+python lerobot/scripts/train.py \
+    --policy.type=diffusion \
+    --dataset.repo_id=username/dataset_name \
+    --output_dir=/path/to/training_result
+```
+
 ## 8. 模型验证
 进入训练结果
 ```/path_to_training_result/checkpoints/last/pretrained_model/config.json```
@@ -296,7 +340,7 @@ python lerobot/scripts/control_robot.py \
 ```
     "type": "dp",
 ```
-参考`examples/dp_inference.py`修改对应参数验证训练结果
+参考`examples/5_inference_dp.py`修改对应参数验证训练结果
 
 ## 9. 常见问题与故障排除
 
