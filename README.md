@@ -338,7 +338,7 @@ python lerobot/scripts/train.py \
 ```/path_to_training_result/checkpoints/last/pretrained_model/config.json```
 确保首行已添加训练类型
 ```
-    "type": "dp",
+    "type": "difussion",
 ```
 参考`examples/5_inference_dp.py`修改对应参数验证训练结果
 
