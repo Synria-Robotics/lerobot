@@ -22,20 +22,19 @@ from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig
 from ..config import RobotConfig
 
 
-def default_cameras_config() -> dict[str, CameraConfig]:
-    return {
-        "wrist": OpenCVCameraConfig(
-            index_or_path="/dev/video2", fps=30, width=640, height=480, rotation=Cv2Rotation.ROTATE_90
-        ),
-        "top": OpenCVCameraConfig(
-            index_or_path="/dev/video0", fps=30, width=640, height=480, rotation=Cv2Rotation.ROTATE_90
-        ),
-    }
-
-
 @RobotConfig.register_subclass("alicia_d")
 @dataclass
 class AliciaDConfig(RobotConfig):
+    @staticmethod
+    def default_cameras_config() -> dict[str, CameraConfig]:
+        return {
+            "wrist": OpenCVCameraConfig(
+                index_or_path="/dev/video2", fps=30, width=640, height=480, rotation=Cv2Rotation.ROTATE_90
+            ),
+            "top": OpenCVCameraConfig(
+                index_or_path="/dev/video0", fps=30, width=640, height=480, rotation=Cv2Rotation.ROTATE_90
+            ),
+        }
     # 串口/波特率
     port: str | None = None  # None 表示让 SDK 自行扫描
     baudrate: int = 1_000_000
@@ -48,6 +47,45 @@ class AliciaDConfig(RobotConfig):
     max_relative_target: float | dict[str, float] | None = None
 
     # 摄像头
-    cameras: dict[str, CameraConfig] = field(default_factory=default_cameras_config)
+    cameras: dict[str, CameraConfig] = field(default_factory=lambda: AliciaDConfig.default_cameras_config())
+
+
+@RobotConfig.register_subclass("alicia_d_multi")
+@dataclass
+class AliciaDMultiConfig(RobotConfig):
+    """双臂 Alicia-D 配置。
+
+    arms: 双臂的串口与波特率设置，键名为臂名（如 left/right）。
+    cameras: 共享相机配置。
+    """
+    @staticmethod
+    def default_multi_cameras_config() -> dict[str, CameraConfig]:
+        return {
+            "left_wrist": OpenCVCameraConfig(
+                index_or_path="/dev/video2", fps=30, width=640, height=480, rotation=Cv2Rotation.ROTATE_90
+            ),
+            "top": OpenCVCameraConfig(
+                index_or_path="/dev/video0", fps=30, width=640, height=480, rotation=Cv2Rotation.ROTATE_90
+            ),
+            "right_wrist": OpenCVCameraConfig(
+                index_or_path="/dev/video3", fps=30, width=640, height=480, rotation=Cv2Rotation.ROTATE_90
+            ),
+            "front": OpenCVCameraConfig(
+                index_or_path="/dev/video1", fps=30, width=640, height=480, rotation=Cv2Rotation.ROTATE_90
+            ),
+        }
+    arms: dict[str, dict] = field(
+        default_factory=lambda: {
+        #请手动设置左/右臂的串口与波特率
+            "left": {"port": "/dev/ttyUSB1", "baudrate": 1_000_000},
+            "right": {"port": "/dev/ttyUSB0", "baudrate": 1_000_000},
+        }
+    )
+
+    # 安全限制（可按关节键分别设置，或统一设置）
+    max_relative_target: float | dict[str, float] | None = None
+
+    # 左/右臂各自相机
+    cameras: dict[str, CameraConfig] = field(default_factory=lambda: AliciaDMultiConfig.default_multi_cameras_config())
 
 
