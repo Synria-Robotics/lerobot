@@ -14,11 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .config import TeleoperatorConfig
-from .teleoperator import Teleoperator
-from .utils import TeleopEvents, make_teleoperator_from_config
+from dataclasses import dataclass
 
-# Ensure built-in teleoperators are imported so their `TeleoperatorConfig` subclasses register
-# Importing leader teleop (Alicia-D teaching arm)
-from .leader import config_leader as _leader_config  # noqa: F401
-from .leader import leader as _leader  # noqa: F401
+from ..config import TeleoperatorConfig
+
+
+@TeleoperatorConfig.register_subclass("leader")
+@dataclass
+class LeaderConfig(TeleoperatorConfig):
+    # Alicia-D leader arm (teaching arm) connection
+    port: str
+    baudrate: int = 1_000_000
+
+    # Alicia-D SDK v6 parameters
+    robot_version: str = "v5_6"
+    gripper_type: str = "50mm"
+    debug_mode: bool = False
+
+
