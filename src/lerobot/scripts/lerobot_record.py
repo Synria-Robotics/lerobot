@@ -183,7 +183,7 @@ class RecordConfig:
     # Display all cameras on screen
     display_data: bool = False
     # Use vocal synthesis to read events.
-    play_sounds: bool = True
+    play_sounds: bool = False
     # Resume recording on an existing dataset.
     resume: bool = False
 
