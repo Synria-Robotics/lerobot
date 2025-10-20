@@ -498,6 +498,7 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
     log_say("Stop recording", cfg.play_sounds, blocking=True)
 
     robot.disconnect()
+    logging.info("Robot disconnected successfully")
     if teleop is not None:
         teleop.disconnect()
 

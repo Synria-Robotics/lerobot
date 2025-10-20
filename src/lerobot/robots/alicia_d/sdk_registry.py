@@ -86,7 +86,21 @@ def release_controller(
     _refcounts[key] = max(0, _refcounts.get(key, 0) - 1)
     if _refcounts[key] == 0:
         try:
+            logger.info(f"正在断开 Alicia-D 控制器: {key}")
+            import signal
+            
+            def timeout_handler(signum, frame):
+                raise TimeoutError("SDK disconnect 超时")
+            
+            # 设置5秒超时
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(5)
+            
             _controllers[key].disconnect()
+            signal.alarm(0)  # 取消超时
+            logger.info("Alicia-D 控制器已成功断开")
+        except TimeoutError:
+            logger.warning("SDK disconnect 超时，强制继续")
         except Exception:
             logger.exception("断开 Alicia-D 控制器失败")
         finally:
