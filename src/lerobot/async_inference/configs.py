@@ -51,7 +51,7 @@ class PolicyServerConfig:
     """
 
     # Networking configuration
-    host: str = field(default="localhost", metadata={"help": "Host address to bind the server to"})
+    host: str = field(default="0.0.0.0", metadata={"help": "Host address to bind the server to"})
     port: int = field(default=8080, metadata={"help": "Port number to bind the server to"})
 
     # Timing configuration
@@ -125,7 +125,7 @@ class RobotClientConfig:
     server_address: str = field(default="localhost:8080", metadata={"help": "Server address to connect to"})
 
     # Device configuration
-    policy_device: str = field(default="cpu", metadata={"help": "Device for policy inference"})
+    policy_device: str = field(default="cuda", metadata={"help": "Device for policy inference"})
 
     # Control behavior configuration
     chunk_size_threshold: float = field(default=0.5, metadata={"help": "Threshold for chunk size control"})

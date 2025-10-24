@@ -49,9 +49,9 @@ from lerobot.transport import (
 )
 from lerobot.transport.utils import receive_bytes_in_chunks
 
-from .configs import PolicyServerConfig
-from .constants import SUPPORTED_POLICIES
-from .helpers import (
+from lerobot.async_inference.configs import PolicyServerConfig
+from lerobot.async_inference.constants import SUPPORTED_POLICIES
+from lerobot.async_inference.helpers import (
     FPSTracker,
     Observation,
     RemotePolicyConfig,
