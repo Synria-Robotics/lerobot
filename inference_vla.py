@@ -25,8 +25,10 @@ import tempfile
 from pathlib import Path
 
 import torch
+from typing import Dict, Any, Tuple
 
 from lerobot.policies.smolvla.modeling_smolvla import SmolVLAPolicy
+from lerobot.policies.factory import make_pre_post_processors
 
 
 REQUIRED_POLICY_FILES = [
@@ -132,14 +134,38 @@ def run(args: argparse.Namespace) -> int:
             print(f"ℹ️ 已准备覆盖 VLM 的临时目录: {working_dir}")
         return 0
 
-    device = torch.device("cuda" if torch.cuda.is_available() and args.device == "auto" else args.device)
+    def _resolve_device(requested: str) -> torch.device:
+        req = requested.lower()
+        if req == "auto":
+            if torch.cuda.is_available():
+                return torch.device("cuda")
+            mps_ok = getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available()
+            if mps_ok:
+                return torch.device("mps")
+            return torch.device("cpu")
+        return torch.device(req)
+
+    device = _resolve_device(args.device)
 
     # 加载策略（强制本地加载）
     policy = SmolVLAPolicy.from_pretrained(str(working_dir), local_files_only=True)
     policy.to(device)
     policy.eval()
 
+    # 构建与服务器一致的预处理/后处理流水线，并对齐设备
+    device_override = {"device": str(device)}
+    preprocessor, postprocessor = make_pre_post_processors(
+        policy.config,
+        pretrained_path=str(working_dir),
+        preprocessor_overrides={"device_processor": device_override},
+        postprocessor_overrides={"device_processor": device_override},
+    )
+
     print("✅ 策略加载成功（本地）")
+    print(
+        f"Torch env | cuda_available={torch.cuda.is_available()} | mps_available="
+        f"{getattr(torch.backends, 'mps', None) is not None and torch.backends.mps.is_available()} | device={device}"
+    )
 
     if args.dry_run:
         # 做一次轻量的张量通路检查，不依赖真实机器人
@@ -164,16 +190,53 @@ def run(args: argparse.Namespace) -> int:
         except Exception:
             obs["task"] = args.task
 
-        with torch.inference_mode():
-            try:
-                act = policy.select_action(obs)
-                act = act.squeeze(0).to("cpu")
-                print(f"✅ dry-run 成功，动作维度: {tuple(act.shape)}")
-            except Exception as e:
-                print(f"❌ dry-run 失败: {e}")
-                return 2
+        # 使用与服务器一致的流程：preprocess -> predict_action_chunk -> postprocess
+        try:
+            obs_pp = preprocessor(obs)
+            with torch.inference_mode():
+                chunk = policy.predict_action_chunk(obs_pp)
+                if chunk.ndim != 3:
+                    chunk = chunk.unsqueeze(0)  # (B, T, A)
+            # 后处理每个时间步
+            B, T, A = chunk.shape
+            processed = []
+            for i in range(T):
+                single = chunk[:, i, :]
+                processed.append(postprocessor(single))
+            actions = torch.stack(processed, dim=1).squeeze(0).to("cpu")  # (T, A)
+            print(f"✅ dry-run 成功 | 原始chunk形状={tuple(chunk.squeeze(0).shape)} | 后处理后形状={tuple(actions.shape)}")
+        except Exception as e:
+            print(f"❌ dry-run 失败: {e}")
+            return 2
 
-    return 0
+        return 0
+
+    # 非 dry-run：执行一次同步推理并打印第一步动作
+    try:
+        image_keys = list(getattr(policy.config, "image_features", {}).keys())
+        obs = {}
+        if image_keys:
+            obs[image_keys[0]] = torch.rand(1, 3, 224, 224, dtype=torch.float32, device=device)
+        max_state = getattr(policy.config, "max_state_dim", 32)
+        obs["observation.state"] = torch.zeros(1, max_state, dtype=torch.float32, device=device)
+        obs["task"] = args.task
+
+        obs_pp = preprocessor(obs)
+        with torch.inference_mode():
+            chunk = policy.predict_action_chunk(obs_pp)
+            if chunk.ndim != 3:
+                chunk = chunk.unsqueeze(0)
+        processed = []
+        for i in range(chunk.shape[1]):
+            processed.append(postprocessor(chunk[:, i, :]))
+        actions = torch.stack(processed, dim=1).squeeze(0).to("cpu")
+        first = actions[0]
+        preview = first.tolist() if first.numel() <= 16 else first[:16].tolist()
+        print(f"✅ 同步推理完成 | 第一步动作维度={tuple(first.shape)} | 预览(前16)：{preview}")
+        return 0
+    except Exception as e:
+        print(f"❌ 推理失败: {e}")
+        return 3
 
 
 def build_argparser() -> argparse.ArgumentParser:
