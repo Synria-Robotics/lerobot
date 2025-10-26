@@ -86,13 +86,51 @@ class PolicyServer(services_pb2_grpc.AsyncInferenceServicer):
         self.last_processed_obs = None
 
         # Attributes will be set by SendPolicyInstructions
-        self.device = None
+        self.device = None  # resolved device actually used by the server
         self.policy_type = None
         self.lerobot_features = None
         self.actions_per_chunk = None
         self.policy = None
         self.preprocessor: PolicyProcessorPipeline[dict[str, Any], dict[str, Any]] | None = None
         self.postprocessor: PolicyProcessorPipeline[PolicyAction, PolicyAction] | None = None
+
+    def _resolve_device(self, requested: str | None) -> str:
+        """Resolve requested device to an available torch device with logging.
+
+        - Accepts values like 'cuda', 'cuda:0', 'cpu', 'mps', 'auto'.
+        - Falls back to the best available device and logs the decision.
+        """
+        # Snapshot environment
+        cuda_available = torch.cuda.is_available()
+        cuda_count = torch.cuda.device_count() if cuda_available else 0
+        mps_available = getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available()
+
+        req = (requested or "cpu").lower()
+        if req == "auto":
+            if cuda_available:
+                self.logger.info(f"Device 'auto' -> using CUDA (count={cuda_count})")
+                return "cuda"
+            if mps_available:
+                self.logger.info("Device 'auto' -> using MPS")
+                return "mps"
+            self.logger.info("Device 'auto' -> falling back to CPU")
+            return "cpu"
+
+        if req.startswith("cuda"):
+            if not cuda_available:
+                self.logger.warning("Requested CUDA but torch.cuda.is_available()=False. Falling back to CPU.")
+                return "cpu"
+            # If specific index requested, keep it; else default to 'cuda'
+            return req
+
+        if req.startswith("mps"):
+            if not mps_available:
+                self.logger.warning("Requested MPS but MPS is not available. Falling back to CPU.")
+                return "cpu"
+            return "mps"
+
+        # Default to CPU
+        return "cpu"
 
     @property
     def running(self):
@@ -147,7 +185,9 @@ class PolicyServer(services_pb2_grpc.AsyncInferenceServicer):
             f"Device: {policy_specs.device}"
         )
 
-        self.device = policy_specs.device
+        # Resolve and validate device
+        resolved_device = self._resolve_device(policy_specs.device)
+        self.device = resolved_device
         self.policy_type = policy_specs.policy_type  # act, pi0, etc.
         self.lerobot_features = policy_specs.lerobot_features
         self.actions_per_chunk = policy_specs.actions_per_chunk
@@ -156,7 +196,18 @@ class PolicyServer(services_pb2_grpc.AsyncInferenceServicer):
 
         start = time.perf_counter()
         self.policy = policy_class.from_pretrained(policy_specs.pretrained_name_or_path)
+        self.logger.info(
+            f"Torch env | cuda_available={torch.cuda.is_available()} | cuda_count={torch.cuda.device_count()} | "
+            f"mps_available={getattr(torch.backends, 'mps', None) is not None and torch.backends.mps.is_available()} | "
+            f"resolved_device={self.device}"
+        )
+        # Move policy
         self.policy.to(self.device)
+        try:
+            first_param_device = next(self.policy.parameters()).device
+            self.logger.info(f"Policy moved to device: {first_param_device}")
+        except Exception:
+            self.logger.debug("Policy has no parameters to check device for.")
 
         # Load preprocessor and postprocessor, overriding device to match requested device
         device_override = {"device": self.device}
@@ -374,6 +425,29 @@ class PolicyServer(services_pb2_grpc.AsyncInferenceServicer):
         """2. Apply preprocessor"""
         start_preprocess = time.perf_counter()
         observation = self.preprocessor(observation)
+        # Try to infer device of observation tensors after preprocessing
+        obs_device = None
+        try:
+            def _first_tensor_device(x):
+                if isinstance(x, torch.Tensor):
+                    return x.device
+                if isinstance(x, dict):
+                    for v in x.values():
+                        d = _first_tensor_device(v)
+                        if d is not None:
+                            return d
+                if isinstance(x, (list, tuple)):
+                    for v in x:
+                        d = _first_tensor_device(v)
+                        if d is not None:
+                            return d
+                return None
+
+            obs_device = _first_tensor_device(observation)
+        except Exception:
+            obs_device = None
+        if obs_device is not None:
+            self.logger.info(f"Preprocessor output device: {obs_device}")
         # Debug: print the keys of the data after preprocessor
         # if hasattr(observation, 'keys'):
         #     self.logger.debug(f"Observation keys after preprocessor: {list(observation.keys())}")
@@ -390,7 +464,8 @@ class PolicyServer(services_pb2_grpc.AsyncInferenceServicer):
         action_tensor = self._get_action_chunk(observation)
         inference_time = time.perf_counter() - start_inference
         self.logger.info(
-            f"Preprocessing and inference took {inference_time:.4f}s, action shape: {action_tensor.shape}"
+            f"Preprocessing and inference took {inference_time:.4f}s, action shape: {action_tensor.shape}, "
+            f"action_device={getattr(action_tensor, 'device', 'unknown')}"
         )
 
         """4. Apply postprocessor"""

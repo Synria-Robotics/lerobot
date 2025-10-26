@@ -285,6 +285,23 @@ class RobotClient:
                 timed_actions = pickle.loads(actions_chunk.data)  # nosec
                 deserialize_time = time.perf_counter() - deserialize_start
 
+                # Basic visibility even when verbose=False
+                try:
+                    chunk_len = len(timed_actions)
+                    first_ts = timed_actions[0].get_timestep() if chunk_len > 0 else None
+                    last_ts = timed_actions[-1].get_timestep() if chunk_len > 0 else None
+                    first_shape = (
+                        tuple(timed_actions[0].get_action().shape)
+                        if chunk_len > 0 and hasattr(timed_actions[0].get_action(), "shape")
+                        else None
+                    )
+                    self.logger.info(
+                        f"[CLIENT] Received action chunk: size={chunk_len}, steps={first_ts}:{last_ts}, "
+                        f"bytes={len(actions_chunk.data)}, first_action_shape={first_shape}"
+                    )
+                except Exception as e:
+                    self.logger.debug(f"[CLIENT] Failed to summarize received actions: {e}")
+
                 self.action_chunk_size = max(self.action_chunk_size, len(timed_actions))
 
                 # Calculate network latency if we have matching observations
@@ -319,6 +336,13 @@ class RobotClient:
                 queue_update_time = time.perf_counter() - start_time
 
                 self.must_go.set()  # after receiving actions, next empty queue triggers must-go processing!
+
+                # Report queue size after enqueue
+                with self.action_queue_lock:
+                    q_after = self.action_queue.qsize()
+                self.logger.info(
+                    f"[CLIENT] Enqueued actions. Queue size now: {q_after} (update took {queue_update_time*1000:.2f}ms)"
+                )
 
                 if verbose:
                     # Get queue state after changes
@@ -371,9 +395,32 @@ class RobotClient:
             timed_action = self.action_queue.get_nowait()
         get_end = time.perf_counter() - get_start
 
-        _performed_action = self.robot.send_action(
-            self._action_tensor_to_action_dict(timed_action.get_action())
-        )
+        # Prepare action to send and log it
+        action_payload = self._action_tensor_to_action_dict(timed_action.get_action())
+        try:
+            jp = action_payload.get("joint_positions")
+            gp = action_payload.get("gripper.pos")
+            jp_preview = [round(x, 4) for x in (jp if isinstance(jp, list) else [])]
+            gp_preview = round(gp, 4) if isinstance(gp, (int, float)) else gp
+            self.logger.info(
+                f"[CLIENT] Sending action to robot | step=#{timed_action.get_timestep()} | "
+                f"joint_positions={jp_preview} | gripper.pos={gp_preview}"
+            )
+        except Exception as e:
+            self.logger.debug(f"[CLIENT] Failed to preview action payload: {e}")
+
+        send_start = time.perf_counter()
+        try:
+            _performed_action = self.robot.send_action(action_payload)
+            send_time = (time.perf_counter() - send_start) * 1000
+            self.logger.info(
+                f"[CLIENT] Robot acknowledged action | step=#{timed_action.get_timestep()} | send_time={send_time:.2f}ms"
+            )
+        except Exception as e:
+            self.logger.error(
+                f"[CLIENT] Robot action send failed | step=#{timed_action.get_timestep()} | error={e}"
+            )
+            raise
         
         with self.latest_action_lock:
             self.latest_action = timed_action.get_timestep()
@@ -530,14 +577,16 @@ def async_client(cfg: RobotClientConfig):
         client.logger.info("Starting action receiver thread...")
 
         # Create and start action receiver thread
-        action_receiver_thread = threading.Thread(target=client.receive_actions, daemon=True)
+        action_receiver_thread = threading.Thread(
+            target=client.receive_actions, kwargs={"verbose": True}, daemon=True
+        )
 
         # Start action receiver thread
         action_receiver_thread.start()
 
         try:
             # The main thread runs the control loop
-            client.control_loop(task=cfg.task)
+            client.control_loop(task=cfg.task, verbose=True)
 
         finally:
             client.stop()
