@@ -116,16 +116,16 @@ class RobotClientConfig:
 
     # Policies typically output K actions at max, but we can use less to avoid wasting bandwidth (as actions
     # would be aggregated on the client side anyway, depending on the value of `chunk_size_threshold`)
-    actions_per_chunk: int = field(metadata={"help": "Number of actions per chunk"})
+    actions_per_chunk: int = field(default=50, metadata={"help": "Number of actions per chunk"})
 
     # Task instruction for the robot to execute (e.g., 'fold my tshirt')
-    task: str = field(default="", metadata={"help": "Task instruction for the robot to execute"})
+    task: str = field(default="pick up the cube", metadata={"help": "Task instruction for the robot to execute"})
 
     # Network configuration
     server_address: str = field(default="localhost:8080", metadata={"help": "Server address to connect to"})
 
     # Device configuration
-    policy_device: str = field(default="cuda", metadata={"help": "Device for policy inference"})
+    policy_device: str = field(default="cpu", metadata={"help": "Device for policy inference"})
 
     # Control behavior configuration
     chunk_size_threshold: float = field(default=0.5, metadata={"help": "Threshold for chunk size control"})

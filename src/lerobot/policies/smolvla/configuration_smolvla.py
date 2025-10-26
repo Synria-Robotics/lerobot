@@ -101,6 +101,9 @@ class SmolVLAConfig(PreTrainedConfig):
 
     min_period: float = 4e-3  # sensitivity range for the timestep used in sine-cosine positional encoding
     max_period: float = 4.0
+    
+    # Offline mode settings
+    offline_mode: bool = False  # Enable offline mode to avoid HuggingFace Hub connections
 
     def __post_init__(self):
         super().__post_init__()

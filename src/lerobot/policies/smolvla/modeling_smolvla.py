@@ -475,33 +475,51 @@ class VLAFlowMatching(nn.Module):
         super().__init__()
         self.config = config
 
-        self.vlm_with_expert = SmolVLMWithExpertModel(
-            model_id=self.config.vlm_model_name,
-            freeze_vision_encoder=self.config.freeze_vision_encoder,
-            train_expert_only=self.config.train_expert_only,
-            load_vlm_weights=self.config.load_vlm_weights,
-            attention_mode=self.config.attention_mode,
-            num_expert_layers=self.config.num_expert_layers,
-            num_vlm_layers=self.config.num_vlm_layers,
-            self_attn_every_n_layers=self.config.self_attn_every_n_layers,
-            expert_width_multiplier=self.config.expert_width_multiplier,
-        )
-        self.state_proj = nn.Linear(
-            self.config.max_state_dim, self.vlm_with_expert.config.text_config.hidden_size
-        )
-        self.action_in_proj = nn.Linear(self.config.max_action_dim, self.vlm_with_expert.expert_hidden_size)
-        self.action_out_proj = nn.Linear(self.vlm_with_expert.expert_hidden_size, self.config.max_action_dim)
+        # 检查是否启用离线模式
+        if hasattr(config, 'offline_mode') and config.offline_mode:
+            print("🔧 启用离线模式，跳过VLM初始化...")
+            self.vlm_with_expert = None
+            # 创建虚拟配置用于后续初始化
+            self._create_offline_components()
+        else:
+            self.vlm_with_expert = SmolVLMWithExpertModel(
+                model_id=self.config.vlm_model_name,
+                freeze_vision_encoder=self.config.freeze_vision_encoder,
+                train_expert_only=self.config.train_expert_only,
+                load_vlm_weights=self.config.load_vlm_weights,
+                attention_mode=self.config.attention_mode,
+                num_expert_layers=self.config.num_expert_layers,
+                num_vlm_layers=self.config.num_vlm_layers,
+                self_attn_every_n_layers=self.config.self_attn_every_n_layers,
+                expert_width_multiplier=self.config.expert_width_multiplier,
+            )
+        # 只有在非离线模式下才初始化这些组件
+        if not (hasattr(config, 'offline_mode') and config.offline_mode):
+            self.state_proj = nn.Linear(
+                self.config.max_state_dim, self.vlm_with_expert.config.text_config.hidden_size
+            )
+            self.action_in_proj = nn.Linear(self.config.max_action_dim, self.vlm_with_expert.expert_hidden_size)
+            self.action_out_proj = nn.Linear(self.vlm_with_expert.expert_hidden_size, self.config.max_action_dim)
 
-        self.action_time_mlp_in = nn.Linear(
-            self.vlm_with_expert.expert_hidden_size * 2, self.vlm_with_expert.expert_hidden_size
-        )
-        self.action_time_mlp_out = nn.Linear(
-            self.vlm_with_expert.expert_hidden_size, self.vlm_with_expert.expert_hidden_size
-        )
+            self.action_time_mlp_in = nn.Linear(
+                self.vlm_with_expert.expert_hidden_size * 2, self.vlm_with_expert.expert_hidden_size
+            )
+            self.action_time_mlp_out = nn.Linear(
+                self.vlm_with_expert.expert_hidden_size, self.vlm_with_expert.expert_hidden_size
+            )
 
-        self.set_requires_grad()
-        self.fake_image_token = self.vlm_with_expert.processor.tokenizer.fake_image_token_id
-        self.global_image_token = self.vlm_with_expert.processor.tokenizer.global_image_token_id
+            self.set_requires_grad()
+            self.fake_image_token = self.vlm_with_expert.processor.tokenizer.fake_image_token_id
+            self.global_image_token = self.vlm_with_expert.processor.tokenizer.global_image_token_id
+        else:
+            # 离线模式下创建虚拟组件
+            self.state_proj = None
+            self.action_in_proj = None
+            self.action_out_proj = None
+            self.action_time_mlp_in = None
+            self.action_time_mlp_out = None
+            self.fake_image_token = 0
+            self.global_image_token = 1
         self.global_image_start_token = torch.tensor(
             [self.fake_image_token, self.global_image_token], dtype=torch.long
         )
@@ -509,6 +527,64 @@ class VLAFlowMatching(nn.Module):
         self.add_image_special_tokens = self.config.add_image_special_tokens
         self.image_end_token = torch.tensor([self.fake_image_token], dtype=torch.long)
         self.prefix_length = self.config.prefix_length
+
+    def _create_offline_components(self):
+        """创建离线模式下的组件"""
+        print("🔧 创建离线组件...")
+        
+        # 创建虚拟的vlm_with_expert对象
+        class OfflineVLMWithExpert:
+            def __init__(self, config):
+                self.config = type('Config', (), {
+                    'text_config': type('TextConfig', (), {
+                        'hidden_size': 512,  # 默认隐藏层大小
+                    })(),
+                })()
+                self.expert_hidden_size = 256  # 默认专家隐藏层大小
+                self.processor = type('Processor', (), {
+                    'tokenizer': type('Tokenizer', (), {
+                        'fake_image_token_id': 0,
+                        'global_image_token_id': 1,
+                    })(),
+                })()
+            
+            def embed_image(self, image):
+                """虚拟的图像嵌入方法"""
+                # 返回虚拟的图像特征，形状为 (batch_size, seq_len, hidden_size)
+                batch_size = image.shape[0]
+                seq_len = 256  # 虚拟序列长度
+                hidden_size = 512  # 与text_config.hidden_size一致
+                return torch.zeros((batch_size, seq_len, hidden_size), device=image.device, dtype=torch.float32)
+            
+            def embed_language_tokens(self, tokens):
+                """虚拟的语言token嵌入方法"""
+                # 返回虚拟的语言特征，形状为 (batch_size, seq_len, hidden_size)
+                batch_size, seq_len = tokens.shape
+                hidden_size = 512  # 与text_config.hidden_size一致
+                return torch.zeros((batch_size, seq_len, hidden_size), device=tokens.device, dtype=torch.float32)
+            
+            def forward(self, attention_mask=None, position_ids=None, past_key_values=None, 
+                       inputs_embeds=None, use_cache=None, fill_kv_cache=None):
+                """虚拟的forward方法"""
+                # 返回虚拟的输出，形状为 (batch_size, seq_len, hidden_size)
+                if inputs_embeds is None or len(inputs_embeds) == 0:
+                    return None, None
+                
+                # 使用第一个输入的形状作为输出形状
+                first_input = inputs_embeds[0]
+                if first_input is None:
+                    return None, None
+                
+                batch_size, seq_len = first_input.shape[:2]
+                hidden_size = 512
+                
+                # 返回虚拟的输出和past_key_values
+                output = torch.zeros((batch_size, seq_len, hidden_size), 
+                                   device=first_input.device, dtype=torch.float32)
+                return [output], None
+        
+        self.vlm_with_expert = OfflineVLMWithExpert(self.config)
+        print("✅ 离线组件创建完成")
 
     def set_requires_grad(self):
         for params in self.state_proj.parameters():

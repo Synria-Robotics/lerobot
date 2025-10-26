@@ -115,7 +115,11 @@ def extract_state_from_raw_observation(
     lerobot_obs: RawObservation,
 ) -> torch.Tensor:
     """Extract the state from a raw observation."""
-    state = torch.tensor(lerobot_obs[OBS_STATE])
+    # 优先使用 joint_positions，如果不存在则使用 observation.state
+    if "joint_positions" in lerobot_obs:
+        state = torch.tensor(lerobot_obs["joint_positions"], dtype=torch.float32)
+    else:
+        state = torch.tensor(lerobot_obs[OBS_STATE])
 
     if state.ndim == 1:
         state = state.unsqueeze(0)

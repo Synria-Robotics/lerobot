@@ -94,7 +94,7 @@ class RobotClient:
         self.robot = make_robot_from_config(config.robot)
         self.robot.connect()
 
-        lerobot_features = map_robot_keys_to_lerobot_features(self.robot)
+        self.lerobot_features = map_robot_keys_to_lerobot_features(self.robot)
 
         # Use environment variable if server_address is not provided in config
         self.server_address = config.server_address
@@ -102,7 +102,7 @@ class RobotClient:
         self.policy_config = RemotePolicyConfig(
             config.policy_type,
             config.pretrained_name_or_path,
-            lerobot_features,
+            self.lerobot_features,
             config.actions_per_chunk,
             config.policy_device,
         )
@@ -347,8 +347,17 @@ class RobotClient:
         with self.action_queue_lock:
             return not self.action_queue.empty()
 
-    def _action_tensor_to_action_dict(self, action_tensor: torch.Tensor) -> dict[str, float]:
-        action = {key: action_tensor[i].item() for i, key in enumerate(self.robot.action_features)}
+    def _action_tensor_to_action_dict(self, action_tensor: torch.Tensor) -> dict[str, float | list]:
+        action = {}
+        
+        # 处理关节位置（前6个值）
+        if len(action_tensor) >= 6:
+            action["joint_positions"] = [action_tensor[i].item() for i in range(6)]
+        
+        # 处理夹爪位置（第7个值）
+        if len(action_tensor) >= 7:
+            action["gripper.pos"] = action_tensor[6].item()
+        
         return action
 
     def control_loop_action(self, verbose: bool = False) -> dict[str, Any]:
@@ -365,6 +374,7 @@ class RobotClient:
         _performed_action = self.robot.send_action(
             self._action_tensor_to_action_dict(timed_action.get_action())
         )
+        
         with self.latest_action_lock:
             self.latest_action = timed_action.get_timestep()
 
@@ -395,14 +405,44 @@ class RobotClient:
             start_time = time.perf_counter()
 
             raw_observation: RawObservation = self.robot.get_observation()
+            #print(f"raw_observation: {raw_observation}")
             raw_observation["task"] = task
 
+            # 不需要添加单独的关节键，直接使用 joint_positions
+            
+            # 转换观测数据到正确的嵌套结构
+            from lerobot.async_inference.helpers import raw_observation_to_observation
+            from lerobot.utils.constants import OBS_IMAGES
+            
+            # 创建策略图像特征映射
+            policy_image_features = {
+                f"{OBS_IMAGES}.wrist": type('PolicyFeature', (), {'shape': (3, 224, 224)})(),
+                f"{OBS_IMAGES}.top": type('PolicyFeature', (), {'shape': (3, 224, 224)})(),
+            }
+            
+            # 转换观测数据
+            processed_observation = raw_observation_to_observation(
+                raw_observation, 
+                self.lerobot_features, 
+                policy_image_features
+            )
+            
+            # 调试：打印转换前后的数据
+            # print(f"🔍 转换前 raw_observation 键: {list(raw_observation.keys())}")
+            # print(f"🔍 转换后 processed_observation 键: {list(processed_observation.keys())}")
+            # print(f"🔍 lerobot_features 键: {list(self.lerobot_features.keys())}")
+            # print(f"🔍 policy_image_features 键: {list(policy_image_features.keys())}")
+            
+            # 如果转换后数据丢失，直接使用原始数据
+            if not processed_observation:
+                print("⚠️ 转换后数据为空，使用原始数据")
+                processed_observation = raw_observation
             with self.latest_action_lock:
                 latest_action = self.latest_action
 
             observation = TimedObservation(
                 timestamp=time.time(),  # need time.time() to compare timestamps across client and server
-                observation=raw_observation,
+                observation=processed_observation,
                 timestep=max(latest_action, 0),
             )
 
@@ -412,8 +452,20 @@ class RobotClient:
             with self.action_queue_lock:
                 observation.must_go = self.must_go.is_set() and self.action_queue.empty()
                 current_queue_size = self.action_queue.qsize()
+            # 调试：打印转换后的观测数据结构
+            processed_obs = observation.get_observation()
+            # print(f"processed_obs: {processed_obs}")
+            # if True:
+            #     print(f"📊 转换后的观测数据:")
+            #     for key, value in processed_obs.items():
+            #         if hasattr(value, 'shape'):
+            #             print(f"  {key}: {type(value)}, shape: {value.shape}")
+            #         else:
+            #             print(f"  {key}: {type(value)}, value: {value}")
+   
 
             _ = self.send_observation(observation)
+
 
             self.logger.debug(f"QUEUE SIZE: {current_queue_size} (Must go: {observation.must_go})")
             if observation.must_go:

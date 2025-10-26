@@ -86,6 +86,8 @@ class AliciaD(Robot):
     # ===== Features =====
     @property
     def _motors_ft(self) -> dict[str, type]:
+        # 为了兼容 hw_to_dataset_features，将关节位置定义为单独的 float 类型
+        # 但实际观测中我们使用 joint_positions 列表
         ft = {f"{name}.pos": float for name in self._joint_names}
         ft[f"{self._gripper_name}.pos"] = float
         return ft
@@ -162,9 +164,11 @@ class AliciaD(Robot):
 
         joint_rad = self._controller.get_joints()
         gripper_rad = self._controller.get_gripper()
-
+        #logger.info(f"{joint_rad}and{gripper_rad}")
         obs_dict: dict[str, Any] = {}
 
+        # 提供 joint_positions 作为主要状态，同时提供单独的关节键用于兼容性
+        obs_dict["joint_positions"] = [float(val) for val in joint_rad]
         for name, val in zip(self._joint_names, joint_rad):
             obs_dict[f"{name}.pos"] = float(val)
         obs_dict[f"{self._gripper_name}.pos"] = float(gripper_rad)
@@ -185,25 +189,20 @@ class AliciaD(Robot):
             raise DeviceNotConnectedError(f"{self} is not connected.")
 
         # 解析关节/夹爪目标
-        goal_pos = {key.removesuffix(".pos"): float(val) for key, val in action.items() if key.endswith(".pos")}
+        if "joint_positions" in action:
+            # 新的结构：joint_positions 是一个包含6个关节位置的列表
+            joint_targets = [float(val) for val in action["joint_positions"]]
+        else:
+            # 旧的结构：分别的关节键
+            goal_pos = {key.removesuffix(".pos"): float(val) for key, val in action.items() if key.endswith(".pos")}
+            joint_targets = [goal_pos.get(name) for name in self._joint_names]
+            if any(v is None for v in joint_targets):
+                present = self.get_observation()
+                for i, name in enumerate(self._joint_names):
+                    if joint_targets[i] is None:
+                        joint_targets[i] = float(present["joint_positions"][i])  # type: ignore
 
-        # 安全限制（相对幅度裁剪）
-        if self.config.max_relative_target is not None:
-            present = self.get_observation()  # 读取一次当前位姿（仅关节相关键）
-            present_pos = {k: float(v) for k, v in present.items() if k.endswith(".pos")}
-            goal_present = {f"{name}.pos": (goal_pos[name], present_pos[f"{name}.pos"]) for name in goal_pos}
-            safe_goal = ensure_safe_goal_position(goal_present, self.config.max_relative_target)
-            goal_pos = {k.removesuffix(".pos"): v for k, v in safe_goal.items()}
-
-        # 组装要保存的动作
-        joint_targets = [goal_pos.get(name) for name in self._joint_names]
-        if any(v is None for v in joint_targets):
-            present = self.get_observation()
-            for i, name in enumerate(self._joint_names):
-                if joint_targets[i] is None:
-                    joint_targets[i] = float(present[f"{name}.pos"])  # type: ignore
-
-        gripper_target = goal_pos.get(self._gripper_name)
+        gripper_target = action.get(f"{self._gripper_name}.pos")
 
         # 仅当 execute_motion=True 时才下发到硬件
         if getattr(self.config, "execute_motion", False):

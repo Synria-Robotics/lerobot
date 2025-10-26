@@ -71,6 +71,10 @@ class PolicyServer(services_pb2_grpc.AsyncInferenceServicer):
         self.config = config
         self.shutdown_event = threading.Event()
 
+        # 禁用 ONNX Runtime 的 INFO 日志
+        # import logging
+        # logging.getLogger("ort").setLevel(logging.WARNING)
+
         # FPS measurement
         self.fps_tracker = FPSTracker(target_fps=config.fps)
 
@@ -186,6 +190,21 @@ class PolicyServer(services_pb2_grpc.AsyncInferenceServicer):
 
         obs_timestep = timed_observation.get_timestep()
         obs_timestamp = timed_observation.get_timestamp()
+
+        raw_obs=timed_observation.get_observation()
+            # debugging raw observation
+        # for key, value in raw_obs.items():
+        #         # 确保所有值都是张量
+        #         if not hasattr(value, 'dtype'):
+        #             import torch
+        #             if isinstance(value, (int, float)):
+        #                 value = torch.tensor(value, dtype=torch.float32)
+        #             raw_obs[key] = value
+                
+        #         if hasattr(value, 'dtype'):
+        #             print(f"key: {key}, dtype: {value.dtype}, shape: {value.shape if hasattr(value, 'shape') else 'scalar'}")
+        #         else:
+        #             print(f"key: {key}, type: {type(value)}, value: {value}")
 
         # Calculate FPS metrics
         fps_metrics = self.fps_tracker.calculate_fps_metrics(obs_timestamp)
@@ -338,16 +357,31 @@ class PolicyServer(services_pb2_grpc.AsyncInferenceServicer):
         """
         """1. Prepare observation"""
         start_prepare = time.perf_counter()
-        observation: Observation = raw_observation_to_observation(
-            observation_t.get_observation(),
-            self.lerobot_features,
-            self.policy_image_features,
-        )
+        # 观测数据已经在客户端转换过了，直接使用
+        observation: Observation = observation_t.get_observation()
+
+        # Debug: print out observation keys after transformation
+        # if hasattr(observation, 'keys'):
+        #     self.logger.debug(f"Observation keys after transformation: {list(observation.keys())}")
+        # else:
+        #     try:
+        #         self.logger.debug(f"Observation keys after transformation: {list(observation.__dict__.keys())}")
+        #     except Exception:
+        #         self.logger.debug(f"Observation type after transformation: {type(observation)}")
+        
         prepare_time = time.perf_counter() - start_prepare
 
         """2. Apply preprocessor"""
         start_preprocess = time.perf_counter()
         observation = self.preprocessor(observation)
+        # Debug: print the keys of the data after preprocessor
+        # if hasattr(observation, 'keys'):
+        #     self.logger.debug(f"Observation keys after preprocessor: {list(observation.keys())}")
+        # else:
+        #     try:
+        #         self.logger.debug(f"Observation keys after preprocessor: {list(observation.__dict__.keys())}")
+        #     except Exception:
+        #         self.logger.debug(f"Observation type after preprocessor: {type(observation)}")
         self.last_processed_obs: TimedObservation = observation_t
         preprocessing_time = time.perf_counter() - start_preprocess
 
