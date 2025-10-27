@@ -77,6 +77,24 @@ def read_config(policy_dir: Path) -> dict:
         return json.load(f)
 
 
+def resolve_vlm_local_path(policy_dir: Path, vlm_name: str | None) -> Path | None:
+    """从 config 的 vlm_model_name 推断本地 VLM 目录。
+
+    - 支持绝对路径
+    - 支持相对 policy_dir 的相对路径
+    找不到则返回 None。
+    """
+    if not vlm_name:
+        return None
+    p = Path(vlm_name)
+    if p.is_absolute() and p.exists():
+        return p
+    rel = policy_dir / vlm_name
+    if rel.exists():
+        return rel
+    return None
+
+
 def patch_policy_dir_with_local_vlm(policy_dir: Path, vlm_path: Path) -> Path:
     """复制策略目录到临时目录，并把 config.json 的 vlm_model_name 指向本地路径。"""
     if not vlm_path.is_dir():
@@ -121,7 +139,7 @@ def run(args: argparse.Namespace) -> int:
         working_dir = patch_policy_dir_with_local_vlm(policy_dir, Path(args.vlm_path).resolve())
     else:
         # 未提供本地 VLM 覆盖，且配置看起来是 Hub ID 时，若 offline 则直接报错，避免误联网
-        if args.offline and looks_like_hf_id(vlm_name):
+        if args.offline and looks_like_hf_id(vlm_name) and resolve_vlm_local_path(policy_dir, vlm_name) is None:
             raise RuntimeError(
                 "当前处于离线模式，但 config.json 的 vlm_model_name 看起来是在线模型 ID。"
                 " 请通过 --vlm_path 提供本地 VLM 目录。"
