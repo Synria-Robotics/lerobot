@@ -1,281 +1,187 @@
 #!/usr/bin/env python
 """
-安全的 SmolVLA 离线推理与策略自检脚本（不连接机器人，不联网）。
+一键运行：Alicia-D + SmolVLA（同步推理，输出末端位姿 -> IK）
 
-功能
-- 校验本地策略目录是否完整（含 Git LFS 指针检测）。
-- 可选覆盖 VLM 本地路径，避免从 HuggingFace 下载。
-- 支持严格离线模式（设置 TRANSFORMERS_OFFLINE / HF_HUB_OFFLINE）。
-- 可选 dry-run：仅做装载与最小张量通路检查，不执行真实控制。
-
-用法
-    python inference_vla.py \
-        --policy_path /home/ubuntu/vla/lerobot/smolvla_base \
-        --vlm_path /absolute/path/to/local/smolvlm \
-        --offline \
-        --dry_run
+- 直接运行：python inference_vla.py
+- 去掉了异步推理（不再启动 gRPC server/client）
+- 观测包含：夹爪状态、末端位姿、相机图像、task 文本
+- 策略输出：末端位姿 [x, y, z, qx, qy, qz, qw]
+- 通过 SDK `set_pose_target` 做逆解并下发到机器人
 """
 
-import argparse
-import json
 import os
-import shutil
 import sys
-import tempfile
+import time
 from pathlib import Path
+from typing import List
 
+import numpy as np
 import torch
-from typing import Dict, Any, Tuple
 
-from lerobot.policies.smolvla.modeling_smolvla import SmolVLAPolicy
-from lerobot.policies.factory import make_pre_post_processors
+# 兼容未安装本仓库到环境时，直接从源码导入
+try:
+    from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig
+    from lerobot.cameras.configs import Cv2Rotation
+    from lerobot.policies.factory import get_policy_class, make_pre_post_processors
+    from lerobot.robots.alicia_d.config_alicia_d import AliciaDConfig
+    from lerobot.robots.alicia_d.alicia_d import AliciaD
+except Exception:
+    sys.path.append(str(Path(__file__).resolve().parent / "src"))
+    from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig
+    from lerobot.cameras.configs import Cv2Rotation
+    from lerobot.policies.factory import get_policy_class, make_pre_post_processors
+    from lerobot.robots.alicia_d.config_alicia_d import AliciaDConfig
+    from lerobot.robots.alicia_d.alicia_d import AliciaD
 
 
-REQUIRED_POLICY_FILES = [
-    "config.json",
-    "model.safetensors",
-    "policy_preprocessor.json",
-    "policy_postprocessor.json",
-]
+# ===== 固定配置（可按需修改） =====
+FPS = 20
+TASK_TEXT = "pick up the cube"
+PRETRAINED = "lerobot/smolvla_base"  # 可改为本地目录
+
+# Windows 常见相机索引（若你的相机顺序不同，请调整 0/1/2...）
+CAM_WRIST_INDEX = 0
+CAM_FRONT_INDEX = 1
+
+# 实机执行动作
+EXECUTE_MOTION = True
 
 
-def is_git_lfs_pointer(file_path: Path) -> bool:
+def resolve_device() -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    mps_ok = getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available()
+    if mps_ok:
+        return "mps"
+    return "cpu"
+
+
+def unset_offline_env() -> None:
+    # 如需从 Hub 在线加载权重，确保未强制离线
+    for k in ("TRANSFORMERS_OFFLINE", "HF_HUB_OFFLINE"):
+        if k in os.environ:
+            os.environ.pop(k, None)
+
+
+def make_alicia_config() -> AliciaDConfig:
+    cameras = {
+        "wrist": OpenCVCameraConfig(
+            index_or_path=CAM_WRIST_INDEX, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
+        ),
+        "front": OpenCVCameraConfig(
+            index_or_path=CAM_FRONT_INDEX, fps=30, width=640, height=480, rotation=Cv2Rotation.NO_ROTATION
+        ),
+    }
+    return AliciaDConfig(
+        id="alicia-default",
+        cameras=cameras,
+        execute_motion=EXECUTE_MOTION,
+        port=None,  # SDK 自行扫描；若你明确串口可在此填写
+        baudrate=1_000_000,
+    )
+
+
+def _to_chw_float_tensor(img_np: np.ndarray) -> torch.Tensor:
+    # 输入 HxWxC uint8/float -> 输出 CxHxW float32 in [0,1]
+    t = torch.from_numpy(img_np)
+    if t.ndim == 3 and t.shape[-1] == 3:  # HWC
+        t = t.permute(2, 0, 1).contiguous()
+    t = t.float()
+    if t.max() > 1.0:
+        t = t / 255.0
+    return t
+
+
+def main() -> int:
+    unset_offline_env()
+
+    # 1) 连接 Alicia-D（读相机 + SDK 控制）
+    alicia_cfg = make_alicia_config()
+    robot = AliciaD(alicia_cfg)
+    robot.connect()
+
+    # 2) 加载 SmolVLA（预训练）并创建预/后处理器
+    device = resolve_device()
+    policy_cls = get_policy_class("smolvla")
+    policy = policy_cls.from_pretrained(PRETRAINED)
+    policy.to(device)
+    # 让处理器与模型同设备运行
+    preproc, postproc = make_pre_post_processors(
+        policy.config,
+        pretrained_path=PRETRAINED,
+        preprocessor_overrides={"device_processor": {"device": device}},
+        postprocessor_overrides={"device_processor": {"device": device}},
+    )
+
+    print(f"已加载策略: {PRETRAINED} | device={device} | FPS={FPS}")
+
     try:
-        with open(file_path, "rb") as f:
-            head = f.read(64)
-        return b"git-lfs.github.com/spec/v1" in head
-    except Exception:
-        return False
+        dt_target = 1.0 / max(1, FPS)
+        while True:
+            t0 = time.perf_counter()
 
+            # 2.1 采集观测
+            obs_raw = robot.get_observation()  # 关节/夹爪 + 图像
+            # 末端位姿来自 SDK 控制器
+            pose_info = robot._controller.get_pose()  # 返回包含 position/quaternion_xyzw 的字典
+            pos = pose_info.get("position")  # [x,y,z]
+            quat = pose_info.get("quaternion_xyzw")  # [qx,qy,qz,qw]
+            if pos is None or quat is None:
+                print("警告：未获取到末端位姿，跳过本帧")
+                time.sleep(dt_target)
+                continue
 
-def validate_policy_dir(policy_dir: Path) -> None:
-    if not policy_dir.is_dir():
-        raise FileNotFoundError(f"策略目录不存在: {policy_dir}")
+            # 组装 observation.state = [gripper, x, y, z, qx, qy, qz, qw]
+            gripper = float(obs_raw.get("gripper.pos", 0.0))
+            state_vec: List[float] = [gripper] + [float(x) for x in list(pos)] + [float(x) for x in list(quat)]
 
-    missing = [p for p in REQUIRED_POLICY_FILES if not (policy_dir / p).exists()]
-    if missing:
-        raise FileNotFoundError(f"策略目录缺少必要文件: {missing}")
+            # 准备图像（键名与预训练配置保持：observation.images.wrist/front）
+            obs_dict: dict = {
+                "observation.state": torch.tensor(state_vec, dtype=torch.float32),
+                "observation.images.wrist": _to_chw_float_tensor(obs_raw.get("wrist")),
+                "observation.images.front": _to_chw_float_tensor(obs_raw.get("front")),
+                "task": TASK_TEXT,
+            }
 
-    # LFS 指针检测
-    lfs_suspects = [
-        p for p in [
-            policy_dir / "model.safetensors",
-            policy_dir / "policy_postprocessor_step_0_unnormalizer_processor.safetensors",
-            policy_dir / "policy_preprocessor_step_5_normalizer_processor.safetensors",
-        ]
-        if p.exists() and is_git_lfs_pointer(p)
-    ]
-    if lfs_suspects:
-        names = ", ".join(str(p.name) for p in lfs_suspects)
-        raise RuntimeError(
-            f"检测到 Git LFS 指针文件 ({names})，实际权重未下载。请先获取真实权重后再试。"
-        )
+            # 2.2 预处理（tokenize/normalize/加 batch/放到设备）
+            obs_proc = preproc(obs_dict)
 
+            # 2.3 推理一个动作（末端位姿）并后处理（反归一化/移到CPU）
+            with torch.inference_mode():
+                action_tensor = policy.select_action(obs_proc)  # (B, action_dim)
+            action_out = postproc(action_tensor).squeeze(0)  # (action_dim,)
 
-def read_config(policy_dir: Path) -> dict:
-    with open(policy_dir / "config.json", "r", encoding="utf-8") as f:
-        return json.load(f)
+            # 期望输出为 7 维位姿（x,y,z,qx,qy,qz,qw）
+            if action_out.ndim != 1 or action_out.numel() < 7:
+                print(f"动作维度异常：{tuple(action_out.shape)}，跳过本帧")
+                time.sleep(dt_target)
+                continue
 
+            target_pose = action_out[:7].tolist()
 
-def resolve_vlm_local_path(policy_dir: Path, vlm_name: str | None) -> Path | None:
-    """从 config 的 vlm_model_name 推断本地 VLM 目录。
-
-    - 支持绝对路径
-    - 支持相对 policy_dir 的相对路径
-    找不到则返回 None。
-    """
-    if not vlm_name:
-        return None
-    p = Path(vlm_name)
-    if p.is_absolute() and p.exists():
-        return p
-    rel = policy_dir / vlm_name
-    if rel.exists():
-        return rel
-    return None
-
-
-def patch_policy_dir_with_local_vlm(policy_dir: Path, vlm_path: Path) -> Path:
-    """复制策略目录到临时目录，并把 config.json 的 vlm_model_name 指向本地路径。"""
-    if not vlm_path.is_dir():
-        raise FileNotFoundError(f"VLM 本地目录不存在: {vlm_path}")
-
-    tmp_dir = Path(tempfile.mkdtemp(prefix="smolvla_policy_"))
-    shutil.copytree(policy_dir, tmp_dir, dirs_exist_ok=True)
-
-    cfg = read_config(tmp_dir)
-    cfg["vlm_model_name"] = str(vlm_path)
-    # 建议显式加载 VLM 权重
-    cfg["load_vlm_weights"] = True
-
-    with open(tmp_dir / "config.json", "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2, ensure_ascii=False)
-
-    return tmp_dir
-
-
-def set_offline_env(enable: bool) -> None:
-    if enable:
-        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
-        os.environ.setdefault("HF_HUB_OFFLINE", "1")
-
-
-def looks_like_hf_id(name: str) -> bool:
-    return "/" in name and not Path(name).exists()
-
-
-def run(args: argparse.Namespace) -> int:
-    policy_dir = Path(args.policy_path).resolve()
-    validate_policy_dir(policy_dir)
-
-    cfg = read_config(policy_dir)
-    vlm_name = cfg.get("vlm_model_name", "")
-
-    # 严格离线模式
-    set_offline_env(args.offline)
-
-    working_dir = policy_dir
-    if args.vlm_path:
-        working_dir = patch_policy_dir_with_local_vlm(policy_dir, Path(args.vlm_path).resolve())
-    else:
-        # 未提供本地 VLM 覆盖，且配置看起来是 Hub ID 时，若 offline 则直接报错，避免误联网
-        if args.offline and looks_like_hf_id(vlm_name) and resolve_vlm_local_path(policy_dir, vlm_name) is None:
-            raise RuntimeError(
-                "当前处于离线模式，但 config.json 的 vlm_model_name 看起来是在线模型 ID。"
-                " 请通过 --vlm_path 提供本地 VLM 目录。"
+            # 2.4 通过 SDK 做 IK 并执行
+            _ik = robot._controller.set_pose_target(
+                target_pose=target_pose,
+                execute=EXECUTE_MOTION,
+                display=False,
             )
 
-    # 仅检查，不实际加载
-    if args.check_only:
-        print("✅ 自检通过：策略目录结构有效。")
-        if working_dir != policy_dir:
-            print(f"ℹ️ 已准备覆盖 VLM 的临时目录: {working_dir}")
-        return 0
+            # 频率控制
+            elapsed = time.perf_counter() - t0
+            sleep_t = dt_target - elapsed
+            if sleep_t > 0:
+                time.sleep(sleep_t)
 
-    def _resolve_device(requested: str) -> torch.device:
-        req = requested.lower()
-        if req == "auto":
-            if torch.cuda.is_available():
-                return torch.device("cuda")
-            mps_ok = getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available()
-            if mps_ok:
-                return torch.device("mps")
-            return torch.device("cpu")
-        return torch.device(req)
-
-    device = _resolve_device(args.device)
-
-    # 加载策略（强制本地加载）
-    policy = SmolVLAPolicy.from_pretrained(str(working_dir), local_files_only=True)
-    policy.to(device)
-    policy.eval()
-
-    # 构建与服务器一致的预处理/后处理流水线，并对齐设备
-    device_override = {"device": str(device)}
-    preprocessor, postprocessor = make_pre_post_processors(
-        policy.config,
-        pretrained_path=str(working_dir),
-        preprocessor_overrides={"device_processor": device_override},
-        postprocessor_overrides={"device_processor": device_override},
-    )
-
-    print("✅ 策略加载成功（本地）")
-    print(
-        f"Torch env | cuda_available={torch.cuda.is_available()} | mps_available="
-        f"{getattr(torch.backends, 'mps', None) is not None and torch.backends.mps.is_available()} | device={device}"
-    )
-
-    if args.dry_run:
-        # 做一次轻量的张量通路检查，不依赖真实机器人
-        # 尽量使用配置中的期望特征来构造最小输入
-        image_keys = list(getattr(policy.config, "image_features", {}).keys())
-        if not image_keys:
-            print("⚠️ 配置未声明 image_features，跳过图像通路测试。")
-        obs = {}
-
-        # 伪造一张 3x512x512 的图像（值域 [0,1]）
-        if image_keys:
-            obs[image_keys[0]] = torch.rand(1, 3, 512, 512, dtype=torch.float32, device=device)
-
-        # 伪造状态向量（长度取 config.max_state_dim）
-        max_state = getattr(policy.config, "max_state_dim", 32)
-        obs["observation.state"] = torch.zeros(1, max_state, dtype=torch.float32, device=device)
-
-        # 语言指令：若 tokenizer 可用则跳过手动注入，由预处理器处理；否则直接放 task 字符串
+    except KeyboardInterrupt:
+        print("\n停止推理，准备断开连接...")
+    finally:
         try:
-            _ = policy.model.vlm_with_expert.processor.tokenizer  # noqa: F841
-            obs["task"] = args.task
+            robot.disconnect()
         except Exception:
-            obs["task"] = args.task
-
-        # 使用与服务器一致的流程：preprocess -> predict_action_chunk -> postprocess
-        try:
-            obs_pp = preprocessor(obs)
-            with torch.inference_mode():
-                chunk = policy.predict_action_chunk(obs_pp)
-                if chunk.ndim != 3:
-                    chunk = chunk.unsqueeze(0)  # (B, T, A)
-            # 后处理每个时间步
-            B, T, A = chunk.shape
-            processed = []
-            for i in range(T):
-                single = chunk[:, i, :]
-                processed.append(postprocessor(single))
-            actions = torch.stack(processed, dim=1).squeeze(0).to("cpu")  # (T, A)
-            print(f"✅ dry-run 成功 | 原始chunk形状={tuple(chunk.squeeze(0).shape)} | 后处理后形状={tuple(actions.shape)}")
-        except Exception as e:
-            print(f"❌ dry-run 失败: {e}")
-            return 2
-
-        return 0
-
-    # 非 dry-run：执行一次同步推理并打印第一步动作
-    try:
-        image_keys = list(getattr(policy.config, "image_features", {}).keys())
-        obs = {}
-        if image_keys:
-            obs[image_keys[0]] = torch.rand(1, 3, 224, 224, dtype=torch.float32, device=device)
-        max_state = getattr(policy.config, "max_state_dim", 32)
-        obs["observation.state"] = torch.zeros(1, max_state, dtype=torch.float32, device=device)
-        obs["task"] = args.task
-
-        obs_pp = preprocessor(obs)
-        with torch.inference_mode():
-            chunk = policy.predict_action_chunk(obs_pp)
-            if chunk.ndim != 3:
-                chunk = chunk.unsqueeze(0)
-        processed = []
-        for i in range(chunk.shape[1]):
-            processed.append(postprocessor(chunk[:, i, :]))
-        actions = torch.stack(processed, dim=1).squeeze(0).to("cpu")
-        first = actions[0]
-        preview = first.tolist() if first.numel() <= 16 else first[:16].tolist()
-        print(f"✅ 同步推理完成 | 第一步动作维度={tuple(first.shape)} | 预览(前16)：{preview}")
-        return 0
-    except Exception as e:
-        print(f"❌ 推理失败: {e}")
-        return 3
-
-
-def build_argparser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Safe SmolVLA offline inference & self-check")
-    p.add_argument("--policy_path", type=str, required=True, help="本地 SmolVLA 策略目录（含 config.json/model.safetensors 等）")
-    p.add_argument("--vlm_path", type=str, default=None, help="本地 SmolVLM 目录（含 config/tokenizer/model 等），覆盖 config.json 的 vlm_model_name")
-    p.add_argument("--offline", action="store_true", help="严格离线模式（禁用一切联网加载）")
-    p.add_argument("--dry_run", action="store_true", help="加载策略并做一次最小张量通路检查")
-    p.add_argument("--check_only", action="store_true", help="仅做目录与配置自检，不加载模型")
-    p.add_argument("--task", type=str, default="pick up the cube", help="语言任务指令")
-    p.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"], help="推理设备")
-    return p
+            pass
+    return 0
 
 
 if __name__ == "__main__":
-    parser = build_argparser()
-    args = parser.parse_args()
-    try:
-        code = run(args)
-    except Exception as e:
-        print(f"❌ 终止：{e}")
-        sys.exit(1)
-    sys.exit(code)
+    raise SystemExit(main())
 
