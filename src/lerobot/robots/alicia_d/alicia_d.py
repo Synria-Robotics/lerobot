@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import logging
+import numpy as np
 import time
 from functools import cached_property
 from typing import Any
@@ -168,14 +169,24 @@ class AliciaD(Robot):
         obs_dict: dict[str, Any] = {}
 
         # 末端位姿数组： [x, y, z, qx, qy, qz, qw]
-        pos = pose_info.get("position") or []
-        quat = pose_info.get("quaternion_xyzw") or []
-        ee_pose = [float(x) for x in list(pos) + list(quat)] if pos and quat else []
+        pos = pose_info.get("position")
+        quat = pose_info.get("quaternion_xyzw")
+        if pos is None or quat is None:
+            ee_pose = []
+        else:
+            pos_arr = np.asarray(pos).flatten()
+            quat_arr = np.asarray(quat).flatten()
+            if pos_arr.size == 0 or quat_arr.size == 0:
+                ee_pose = []
+            else:
+                ee_pose = [float(x) for x in np.concatenate([pos_arr, quat_arr]).tolist()]
         obs_dict["ee_pose"] = ee_pose
 
         # 关节与夹爪
         for name, val in zip(self._joint_names, joint_rad):
             obs_dict[f"{name}.pos"] = float(val)
+        # 兼容旧逻辑：提供 joint_positions 列表
+        obs_dict["joint_positions"] = [float(v) for v in joint_rad]
         obs_dict[f"{self._gripper_name}.pos"] = float(gripper_rad)
 
         dt_ms = (time.perf_counter() - start) * 1e3

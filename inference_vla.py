@@ -41,7 +41,7 @@ PRETRAINED = "lerobot/smolvla_base"  # 可改为本地目录
 
 # Windows 常见相机索引（若你的相机顺序不同，请调整 0/1/2...）
 CAM_WRIST_INDEX = 0
-CAM_FRONT_INDEX = 1
+CAM_FRONT_INDEX = 2
 
 # 实机执行动作
 EXECUTE_MOTION = True
@@ -151,7 +151,7 @@ def main() -> int:
                 },
                 "task": TASK_TEXT,
             }
-            print(obs_raw)
+            print(obs_raw["position"])
             # 组装 observation.state = [gripper, x, y, z, qx, qy, qz, qw]
             gripper = float(robot._controller.get_gripper() or 0.0)
             state_vec: List[float] = [gripper] + obs_raw["position"]["pose"] + obs_raw["position"]["quaternion"]
@@ -163,6 +163,11 @@ def main() -> int:
                 "observation.images.front": _to_chw_float_tensor(obs_raw["images"]["front"]),
                 "task": obs_raw["task"],
             }
+
+            # 兼容某些预训练配置期望的相机键名（camera1/2/3）
+            obs_dict["observation.images.camera1"] = obs_dict["observation.images.wrist"]
+            obs_dict["observation.images.camera2"] = obs_dict["observation.images.front"]
+            #obs_dict["observation.images.camera3"] = obs_dict["observation.images.front"]
 
             # 2.2 预处理（tokenize/normalize/加 batch/放到设备）
             obs_proc = preproc(obs_dict)
