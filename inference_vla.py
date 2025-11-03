@@ -187,8 +187,9 @@ def main() -> int:
             raw_pose = action_out[:7].tolist()
             target_pose = raw_pose[:3] + _normalize_quaternion(raw_pose[3:7])
 
+            print(f"target_pose: {target_pose}")
             # 2.4 通过 SDK 做 IK 并执行
-            _ik = robot._controller.set_pose_target(
+            _ik = robot.set_pose_target(
                 target_pose=target_pose,
                 execute=EXECUTE_MOTION,
                 display=False,

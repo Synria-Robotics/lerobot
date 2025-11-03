@@ -232,7 +232,7 @@ class PolicyServer(services_pb2_grpc.AsyncInferenceServicer):
         receive_time = time.time()  # comparing timestamps so need time.time()
         start_deserialize = time.perf_counter()
         received_bytes = receive_bytes_in_chunks(
-            request_iterator, None, self.shutdown_event, self.logger
+            request_iterator, None, self.shutdown_event, "[SERVER] Observation"
         )  # blocking call while looping over request_iterator
         timed_observation = pickle.loads(received_bytes)  # nosec
         deserialize_time = time.perf_counter() - start_deserialize

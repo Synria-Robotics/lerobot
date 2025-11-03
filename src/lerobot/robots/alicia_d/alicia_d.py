@@ -20,7 +20,7 @@ import logging
 import numpy as np
 import time
 from functools import cached_property
-from typing import Any
+from typing import Any, List, Dict
 
 from lerobot.cameras.utils import make_cameras_from_configs
 from lerobot.utils.errors import DeviceAlreadyConnectedError, DeviceNotConnectedError
@@ -257,6 +257,51 @@ class AliciaD(Robot):
             self._controller = None
 
         logger.info(f"{self} disconnected.")
+
+    # ===== High-level IK API (proxy to SDK) =====
+    def set_pose_target(
+        self,
+        *,
+        target_pose: List[float],
+        backend: str = "torch",
+        method: str = "dls",
+        display: bool = False,
+        tolerance: float = 1e-4,
+        max_iters: int = 100,
+        multi_start: int = 0,
+        use_random_init: bool = False,
+        speed_factor: float = 1.0,
+        execute: bool = True,
+    ) -> Dict[str, Any]:
+        if not self.is_connected:
+            raise DeviceNotConnectedError(f"{self} is not connected.")
+
+        if not isinstance(target_pose, (list, tuple)) or len(target_pose) < 7:
+            raise ValueError("target_pose 需为长度>=7的列表：[x,y,z,qx,qy,qz,qw]")
+
+        # 归一化四元数，提升 IK 稳定性
+        pos = [float(x) for x in target_pose[:3]]
+        quat = [float(x) for x in target_pose[3:7]]
+        q = np.asarray(quat, dtype=np.float64)
+        n = np.linalg.norm(q)
+        if not np.isfinite(n) or n < 1e-8:
+            qn = np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float64)
+        else:
+            qn = (q / n).astype(np.float64)
+        target_pose_norm = pos + qn.tolist()
+
+        return self._controller.set_pose_target(
+            target_pose=target_pose_norm,
+            backend=backend,
+            method=method,
+            display=display,
+            tolerance=tolerance,
+            max_iters=max_iters,
+            multi_start=multi_start,
+            use_random_init=use_random_init,
+            speed_factor=speed_factor,
+            execute=execute,
+        )
 
 
 
