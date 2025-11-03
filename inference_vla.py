@@ -92,6 +92,15 @@ def _to_chw_float_tensor(img_np: np.ndarray) -> torch.Tensor:
     return t
 
 
+def _normalize_quaternion(q: List[float]) -> List[float]:
+    q_np = np.asarray(q, dtype=np.float64)
+    n = np.linalg.norm(q_np)
+    if not np.isfinite(n) or n < 1e-8:
+        return [0.0, 0.0, 0.0, 1.0]
+    q_np = q_np / n
+    return q_np.astype(np.float64).tolist()
+
+
 def main() -> int:
     unset_offline_env()
 
@@ -120,9 +129,8 @@ def main() -> int:
         while True:
             t0 = time.perf_counter()
 
-            # 2.1 采集观测
-            obs_raw = robot.get_observation()  # 关节/夹爪 + 图像
-            # 末端位姿来自 SDK 控制器
+            # 2.1 采集观测（构造仅包含 position/images/task 的原始观测）
+            _tmp = robot.get_observation()  # 仅用于取相机帧
             pose_info = robot._controller.get_pose()  # 返回包含 position/quaternion_xyzw 的字典
             pos = pose_info.get("position")  # [x,y,z]
             quat = pose_info.get("quaternion_xyzw")  # [qx,qy,qz,qw]
@@ -131,16 +139,29 @@ def main() -> int:
                 time.sleep(dt_target)
                 continue
 
+            # 原始 observation：三个键
+            obs_raw = {
+                "position": {
+                    "pose": [float(x) for x in list(pos)],
+                    "quaternion": [float(x) for x in list(quat)],
+                },
+                "images": {
+                    "wrist": _tmp.get("wrist"),
+                    "front": _tmp.get("front"),
+                },
+                "task": TASK_TEXT,
+            }
+            print(obs_raw)
             # 组装 observation.state = [gripper, x, y, z, qx, qy, qz, qw]
-            gripper = float(obs_raw.get("gripper.pos", 0.0))
-            state_vec: List[float] = [gripper] + [float(x) for x in list(pos)] + [float(x) for x in list(quat)]
+            gripper = float(robot._controller.get_gripper() or 0.0)
+            state_vec: List[float] = [gripper] + obs_raw["position"]["pose"] + obs_raw["position"]["quaternion"]
 
             # 准备图像（键名与预训练配置保持：observation.images.wrist/front）
             obs_dict: dict = {
                 "observation.state": torch.tensor(state_vec, dtype=torch.float32),
-                "observation.images.wrist": _to_chw_float_tensor(obs_raw.get("wrist")),
-                "observation.images.front": _to_chw_float_tensor(obs_raw.get("front")),
-                "task": TASK_TEXT,
+                "observation.images.wrist": _to_chw_float_tensor(obs_raw["images"]["wrist"]),
+                "observation.images.front": _to_chw_float_tensor(obs_raw["images"]["front"]),
+                "task": obs_raw["task"],
             }
 
             # 2.2 预处理（tokenize/normalize/加 batch/放到设备）
@@ -157,7 +178,9 @@ def main() -> int:
                 time.sleep(dt_target)
                 continue
 
-            target_pose = action_out[:7].tolist()
+            # 归一化四元数，避免策略输出非单位四元数导致 IK 异常
+            raw_pose = action_out[:7].tolist()
+            target_pose = raw_pose[:3] + _normalize_quaternion(raw_pose[3:7])
 
             # 2.4 通过 SDK 做 IK 并执行
             _ik = robot._controller.set_pose_target(

@@ -163,12 +163,17 @@ class AliciaD(Robot):
         start = time.perf_counter()
 
         joint_rad = self._controller.get_joints()
+        pose_info = self._controller.get_pose()
         gripper_rad = self._controller.get_gripper()
-        #logger.info(f"{joint_rad}and{gripper_rad}")
         obs_dict: dict[str, Any] = {}
 
-        # 提供 joint_positions 作为主要状态，同时提供单独的关节键用于兼容性
-        obs_dict["joint_positions"] = [float(val) for val in joint_rad]
+        # 末端位姿数组： [x, y, z, qx, qy, qz, qw]
+        pos = pose_info.get("position") or []
+        quat = pose_info.get("quaternion_xyzw") or []
+        ee_pose = [float(x) for x in list(pos) + list(quat)] if pos and quat else []
+        obs_dict["ee_pose"] = ee_pose
+
+        # 关节与夹爪
         for name, val in zip(self._joint_names, joint_rad):
             obs_dict[f"{name}.pos"] = float(val)
         obs_dict[f"{self._gripper_name}.pos"] = float(gripper_rad)
