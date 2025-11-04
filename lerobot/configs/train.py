@@ -51,13 +51,16 @@ class TrainPipelineConfig(HubMixin):
     seed: int | None = 1000
     # 数据加载器的工作线程数。
     num_workers: int = 8
-    batch_size: int = 32
-    steps: int = 400_000
+    #batch_size: int = 32
+    batch_size: int = 14
+    #steps: int = 400_000
+    steps: int = 40_000
+    # 每隔多少步进行一次评估
     eval_freq: int = 2000
     log_freq: int = 100
     save_checkpoint: bool = True
     # 检查点每 `save_freq` 次训练迭代后以及最后一次训练步骤后保存。
-    save_freq: int = 5000
+    save_freq: int = 4000
     use_policy_training_preset: bool = True
     optimizer: OptimizerConfig | None = None
     scheduler: LRSchedulerConfig | None = None

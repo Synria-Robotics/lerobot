@@ -22,10 +22,10 @@ import torch
 
 # 导入Alicia-D SDK
 try:
-    from alicia_d_sdk.controller import get_default_session, ControlApi
+    import alicia_d_sdk
 except ImportError:
     logging.warning("未找到Alicia-D SDK。请确保已正确安装`alicia_d_sdk`包。")
-    ControlApi = None
+    alicia_d_sdk = None
 
 from lerobot.common.robot_devices.cameras.utils import make_cameras_from_configs
 from lerobot.common.robot_devices.robots.configs import AliciaDRobotConfig
@@ -65,9 +65,15 @@ class AliciaDRobot:
         self.port = self.config.port
         self.baudrate = self.config.baudrate
         self.debug_mode = self.config.debug_mode
-        
+        print("================================")
+        print("configfile:", self.config)
         # 摄像头
         self.cameras = make_cameras_from_configs(self.config.cameras)
+        print("================================")
+
+        print(f"摄像头列表: {list(self.cameras.keys())}")
+        
+        print("================================")
         
         # 连接状态
         self.is_connected = False
@@ -78,24 +84,23 @@ class AliciaDRobot:
         self.enable_online_smooth = enable_online_smooth
         
         # 创建控制器
-        if ControlApi is not None:
-            print("baudrate", self.baudrate)
-            self.session = get_default_session(port=self.port, baudrate=self.baudrate)
-            print("session:", self.session)
-            self.controller = ControlApi(session=self.session)
+        if alicia_d_sdk is not None:
+            # 使用新的 create_robot 函数创建机器人实例
+            # 注意：新 SDK 不再需要单独的 session，直接使用 robot 对象
+            self.controller = alicia_d_sdk.create_robot(
+                port=self.port,
+                baudrate=self.baudrate,
+                robot_version="v5_6",  # 默认版本，可根据配置调整
+                gripper_type="50mm",   # 默认夹爪类型，可根据配置调整
+                debug_mode=self.debug_mode
+            )
+            # 新 SDK 不再支持 startOnlineSmoothing，平滑功能已内置
+            self.enable_online_smooth = enable_online_smooth
         else:
             self.controller = None
             if not self.config.mock:
-                logging.error("无法创建ControlApi。请确保已安装Alicia-D SDK。")
-                
-        if enable_online_smooth:
-            self.controller.startOnlineSmoothing(
-                command_rate_hz=200,
-                max_joint_velocity_rad_s=2.5,
-                max_joint_accel_rad_s2=1,
-                max_gripper_velocity_rad_s=1.5,
-                max_gripper_accel_rad_s2=10.0,
-            )
+                logging.error("无法创建机器人实例。请确保已安装Alicia-D SDK。")
+            self.enable_online_smooth = False
         
         # 关节数量：6个关节+1个夹爪
         self.joint_count = 6
@@ -193,13 +198,13 @@ class AliciaDRobot:
         
         if self.controller is None:
             raise RobotDeviceNotConnectedError(
-                "ArmController未初始化。请确保已安装Alicia-D SDK。"
+                "机器人实例未初始化。请确保已安装Alicia-D SDK。"
             )
         
-        # # 连接到机械臂
-        # logging.info("正在连接到Alicia-D机械臂...")
-        # if not self.controller.connect():
-        #     raise RobotDeviceNotConnectedError("无法连接到Alicia-D机械臂。请检查连接。")
+        # 连接到机械臂
+        logging.info("正在连接到Alicia-D机械臂...")
+        if not self.controller.connect():
+            raise RobotDeviceNotConnectedError("无法连接到Alicia-D机械臂。请检查连接。")
         
         # 连接摄像头（如果有）
         for name in self.cameras:
@@ -232,8 +237,8 @@ class AliciaDRobot:
             )
         
         # 读取当前状态
-        joint_rad = self.controller.get_joints()
-        gripper_rad = self.controller.get_gripper()
+        joint_rad = self.controller.get_joints()  # 返回弧度值
+        gripper_value = self.controller.get_gripper()  # 返回 0-100 的值
         
         # 如果不需要记录数据，则提前返回
         if not record_data:
@@ -244,7 +249,7 @@ class AliciaDRobot:
         
         # 关节角度和夹爪角度组合为状态
         joint_angles = torch.tensor(joint_rad, dtype=torch.float32)
-        gripper_angle = torch.tensor([gripper_rad], dtype=torch.float32)
+        gripper_angle = torch.tensor([gripper_value], dtype=torch.float32)  # 0-100 范围
         combined_state = torch.cat([joint_angles, gripper_angle])
         obs_dict["observation.state"] = combined_state
         
@@ -270,15 +275,15 @@ class AliciaDRobot:
             )
         
         # 读取当前状态
-        joint_rad = self.controller.get_joints()
-        gripper_rad = self.controller.get_gripper()
+        joint_rad = self.controller.get_joints()  # 返回弧度值
+        gripper_value = self.controller.get_gripper()  # 返回 0-100 的值
         
         # 创建观察字典
         obs_dict = {}
         
         # 关节角度和夹爪角度组合为状态
         joint_angles = torch.tensor(joint_rad, dtype=torch.float32)
-        gripper_angle = torch.tensor([gripper_rad], dtype=torch.float32)
+        gripper_angle = torch.tensor([gripper_value], dtype=torch.float32)  # 0-100 范围
         combined_state = torch.cat([joint_angles, gripper_angle])
         obs_dict["observation.state"] = combined_state
         
@@ -322,9 +327,9 @@ class AliciaDRobot:
         # 应用安全限制（如果配置了max_relative_target）
         if self.config.max_relative_target is not None:
             # 读取当前关节位置
-            joint_rad = self.controller.get_joints()
-            gripper_rad = self.controller.get_gripper()
+            joint_rad = self.controller.get_joints()  # 返回弧度值
             current_joint_angles = joint_rad
+            # 注意：gripper 值（0-100）不需要安全限制，因为范围固定
             
             # 限制关节移动范围
             safe_joint_angles = []
@@ -344,12 +349,12 @@ class AliciaDRobot:
             joint_angles = safe_joint_angles
         
         # 发送命令到机械臂
-        if self.enable_online_smooth:
-            self.controller.setJointTargetOnline(joint_angles)
-            self.controller.setGripperTargetOnline(gripper_angle)
-        else:
-            self.controller.joint_controller.set_joint_angles(joint_angles)
-            self.controller.joint_controller.set_gripper(gripper_angle)
+        # 新 SDK 使用统一的 set_joint_target 和 set_gripper_target 方法
+        self.controller.set_joint_target(target_joints=joint_angles, joint_format='rad')
+        if gripper_angle is not None:
+            # 新 SDK 的 set_gripper_target 接受 value 参数（0-100 范围）
+            # gripper_angle 已经是 0-100 范围的值（来自 get_gripper() 返回）
+            self.controller.set_gripper_target(value=float(gripper_angle), wait_for_completion=False)
 
         # 返回实际发送的动作
         if gripper_angle is not None:
@@ -357,6 +362,11 @@ class AliciaDRobot:
         else:
             return torch.tensor(joint_angles, dtype=torch.float32)
     
+
+    def moveHome(self):
+        """移动到初始位置。"""
+        self.controller.set_home()
+
     def disconnect(self):
         """断开与机械臂的连接。"""
         if not self.is_connected:
@@ -374,9 +384,7 @@ class AliciaDRobot:
         
         # 断开机械臂连接
         if not self.config.mock and self.controller is not None:
-            if self.enable_online_smooth:
-                self.controller.stopOnlineSmoothing()
-            self.session.joint_controller.disconnect()
+            self.controller.disconnect()
             logging.info("已断开机械臂连接")
         
         self.is_connected = False

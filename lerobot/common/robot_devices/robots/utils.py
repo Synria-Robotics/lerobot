@@ -87,7 +87,7 @@ def make_robot_from_config(config: RobotConfig):
     elif isinstance(config, AliciaDRobotConfig):
         from lerobot.common.robot_devices.robots.alicia_d import AliciaDRobot
         
-        return AliciaDRobot(config)
+        return AliciaDRobot(config, enable_online_smooth=False)
     elif isinstance(config, AliciaDMultiRobotConfig):
         from lerobot.common.robot_devices.robots.alicia_d_multi import AliciaDMultiRobot
         
