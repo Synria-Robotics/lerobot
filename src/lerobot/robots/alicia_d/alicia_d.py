@@ -164,24 +164,9 @@ class AliciaD(Robot):
         start = time.perf_counter()
 
         joint_rad = self._controller.get_joints()
-        pose_info = self._controller.get_pose()
         gripper_rad = self._controller.get_gripper()
         obs_dict: dict[str, Any] = {}
-
-        # 末端位姿数组： [x, y, z, qx, qy, qz, qw]
-        pos = pose_info.get("position")
-        quat = pose_info.get("quaternion_xyzw")
-        if pos is None or quat is None:
-            ee_pose = []
-        else:
-            pos_arr = np.asarray(pos).flatten()
-            quat_arr = np.asarray(quat).flatten()
-            if pos_arr.size == 0 or quat_arr.size == 0:
-                ee_pose = []
-            else:
-                ee_pose = [float(x) for x in np.concatenate([pos_arr, quat_arr]).tolist()]
-        obs_dict["ee_pose"] = ee_pose
-
+        
         # 关节与夹爪
         for name, val in zip(self._joint_names, joint_rad):
             obs_dict[f"{name}.pos"] = float(val)
