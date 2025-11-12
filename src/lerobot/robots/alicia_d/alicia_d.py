@@ -207,7 +207,7 @@ class AliciaD(Robot):
 
         # 仅当 execute_motion=True 时才下发到硬件
         if getattr(self.config, "execute_motion", False):
-            self._controller.set_joint_target(joint_targets, joint_format="rad", speed_factor=1.0)
+            self._controller.set_joint_target(joint_targets, joint_format="rad")
             if gripper_target is not None:
                 gt = max(0.0, min(100.0, float(gripper_target)))
                 self._controller.set_gripper_target(value=gt)
@@ -255,7 +255,6 @@ class AliciaD(Robot):
         max_iters: int = 100,
         multi_start: int = 0,
         use_random_init: bool = False,
-        speed_factor: float = 1.0,
         execute: bool = True,
     ) -> Dict[str, Any]:
         if not self.is_connected:
@@ -284,7 +283,6 @@ class AliciaD(Robot):
             max_iters=max_iters,
             multi_start=multi_start,
             use_random_init=use_random_init,
-            speed_factor=speed_factor,
             execute=execute,
         )
 

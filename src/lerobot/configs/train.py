@@ -51,17 +51,27 @@ class TrainPipelineConfig(HubMixin):
     seed: int | None = 1000
     # Number of workers for the dataloader.
     num_workers: int = 4
+    # Batch size for training.调整batch_size便可调整显存占用率
     batch_size: int = 8
+    # Number of steps for training.调整steps可调整训练的总时长。steps适当即可
     steps: int = 100_000
+    # Frequency of evaluation.调整eval_freq可调整评估的频率。eval_freq适当即可
     eval_freq: int = 20_000
+    # Frequency of logging.调整log_freq可调整日志的频率。log_freq适当即可
     log_freq: int = 200
-    save_checkpoint: bool = True
-    # Checkpoint is saved every `save_freq` training iterations and after the last training step.
+    # Frequency of saving checkpoints.调整save_freq可调整保存检查点的频率。save_freq适当即可
     save_freq: int = 20_000
+    # Whether to save checkpoints.调整save_checkpoint可调整是否保存检查点。save_checkpoint适当即可
+    save_checkpoint: bool = True
+    # Whether to use policy training preset.调整use_policy_training_preset可调整是否使用策略训练预设。use_policy_training_preset适当即可
     use_policy_training_preset: bool = True
+    # Optimizer configuration.调整optimizer可调整优化器。optimizer适当即可
     optimizer: OptimizerConfig | None = None
+    # Scheduler configuration.调整scheduler可调整调度器。scheduler适当即可
     scheduler: LRSchedulerConfig | None = None
+    # Evaluation configuration.调整eval可调整评估。eval适当即可
     eval: EvalConfig = field(default_factory=EvalConfig)
+    # WandB configuration.调整wandb可调整WandB。wandb适当即可
     wandb: WandBConfig = field(default_factory=WandBConfig)
 
     def __post_init__(self):
