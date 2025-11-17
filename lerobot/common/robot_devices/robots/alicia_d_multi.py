@@ -2,17 +2,16 @@
 
 import logging
 import time
-from typing import Dict, Any
 
 import numpy as np
 import torch
 
 # 导入Alicia-D SDK
 try:
-    from alicia_d_sdk.controller import get_default_session, ControlApi
+    import alicia_d_sdk
 except ImportError:
     logging.warning("未找到Alicia-D SDK。请确保已正确安装`alicia_d_sdk`包。")
-    ControlApi = None
+    alicia_d_sdk = None
 
 from lerobot.common.robot_devices.cameras.utils import make_cameras_from_configs
 from lerobot.common.robot_devices.robots.configs import AliciaDMultiRobotConfig
@@ -30,7 +29,7 @@ class AliciaDMultiRobot:
         
         Args:
             config: 双Alicia-D机械臂配置
-            enable_online_smooth: 是否启用在线平滑控制
+            enable_online_smooth: 是否启用在线平滑控制（新SDK已内置平滑功能）
         """
         self.config = config
         self.robot_type = self.config.type
@@ -38,23 +37,23 @@ class AliciaDMultiRobot:
         
         # 创建两个机械臂控制器
         self.robots = {}
-        for arm_name, arm_config in config.arms.items():
-            session = get_default_session(baudrate=arm_config["baudrate"], port=arm_config["port"])
-            if ControlApi is not None:
-                self.robots[arm_name] = ControlApi(session=session)
-            else:
+        if alicia_d_sdk is not None:
+            for arm_name, arm_config in config.arms.items():
+                # 使用新的 create_robot 函数创建机器人实例
+                # 注意：新 SDK 不再需要单独的 session，直接使用 robot 对象
+                self.robots[arm_name] = alicia_d_sdk.create_robot(
+                    port=arm_config["port"],
+                    baudrate=arm_config["baudrate"],
+                    robot_version="v5_6",  # 默认版本，可根据配置调整
+                    gripper_type="50mm",   # 默认夹爪类型，可根据配置调整
+                    debug_mode=arm_config.get("debug_mode", False)
+                )
+                # 新 SDK 不再支持 startOnlineSmoothing，平滑功能已内置
+        else:
+            for arm_name in config.arms.keys():
                 self.robots[arm_name] = None
                 if not self.config.mock:
-                    logging.error(f"无法创建{arm_name}的ControlApi。请确保已安装Alicia-D SDK。")
-
-            if self.enable_online_smooth and self.robots[arm_name] is not None:
-                self.robots[arm_name].startOnlineSmoothing(
-                    command_rate_hz=200,
-                    max_joint_velocity_rad_s=2.5,
-                    max_joint_accel_rad_s2=1,
-                    max_gripper_velocity_rad_s=1.5,
-                    max_gripper_accel_rad_s2=10.0,
-                )
+                    logging.error(f"无法创建{arm_name}的机器人实例。请确保已安装Alicia-D SDK。")
         
         # 摄像头
         self.cameras = make_cameras_from_configs(self.config.cameras)
@@ -144,13 +143,12 @@ class AliciaDMultiRobot:
         for arm_name, controller in self.robots.items():
             if controller is None:
                 raise RobotDeviceNotConnectedError(
-                    f"{arm_name}的ControlApi未初始化。请确保已安装Alicia-D SDK。"
+                    f"{arm_name}的机器人实例未初始化。请确保已安装Alicia-D SDK。"
                 )
             
-            # 注释掉实际的机械臂连接代码，与alicia_duo.py保持一致
-            # logging.info(f"正在连接到{arm_name}机械臂...")
-            # if not controller.connect():
-            #     raise RobotDeviceNotConnectedError(f"无法连接到{arm_name}机械臂。请检查连接。")
+            logging.info(f"正在连接到{arm_name}机械臂...")
+            if not controller.connect():
+                raise RobotDeviceNotConnectedError(f"无法连接到{arm_name}机械臂。请检查连接。")
         
         # 连接摄像头
         for name in self.cameras:
@@ -172,18 +170,19 @@ class AliciaDMultiRobot:
                 "AliciaDMultiRobot未连接。你需要运行`robot.connect()`。"
             )
         
-        if not record_data:
-            return None
-        
         # 读取所有机械臂的状态
         all_states = []
         for arm_name, controller in self.robots.items():
-            joint_rad = controller.get_joints()
-            gripper_rad = controller.get_gripper()
+            joint_rad = controller.get_joints()  # 返回弧度值
+            gripper_value = controller.get_gripper()  # 返回 0-100 的值
             joint_angles = torch.tensor(joint_rad, dtype=torch.float32)
-            gripper_angle = torch.tensor([gripper_rad], dtype=torch.float32)
+            gripper_angle = torch.tensor([gripper_value], dtype=torch.float32)  # 0-100 范围
             arm_state = torch.cat([joint_angles, gripper_angle])
             all_states.append(arm_state)
+        
+        # 如果不需要记录数据，则提前返回
+        if not record_data:
+            return None
         
         # 合并所有状态
         combined_state = torch.cat(all_states)
@@ -196,7 +195,7 @@ class AliciaDMultiRobot:
             frame = cam.async_read()
             obs_dict[f"observation.images.{name}"] = torch.from_numpy(frame)
         
-        # 动作与状态相同
+        # 动作与状态相同（因为这是记录模式，实际动作就是当前状态）
         action_dict = {"action": combined_state}
         
         return obs_dict, action_dict
@@ -211,10 +210,10 @@ class AliciaDMultiRobot:
         # 读取所有机械臂的状态
         all_states = []
         for arm_name, controller in self.robots.items():
-            joint_rad = controller.get_joints()
-            gripper_rad = controller.get_gripper()
+            joint_rad = controller.get_joints()  # 返回弧度值
+            gripper_value = controller.get_gripper()  # 返回 0-100 的值
             joint_angles = torch.tensor(joint_rad, dtype=torch.float32)
-            gripper_angle = torch.tensor([gripper_rad], dtype=torch.float32)
+            gripper_angle = torch.tensor([gripper_value], dtype=torch.float32)  # 0-100 范围
             arm_state = torch.cat([joint_angles, gripper_angle])
             all_states.append(arm_state)
         
@@ -255,17 +254,64 @@ class AliciaDMultiRobot:
             arm_action = action[start_idx:end_idx]
             
             # 提取关节角度和夹爪角度
-            joint_angles = arm_action[:self.joint_count_per_arm].tolist()
-            gripper_angle = arm_action[-1].item() if self.has_gripper else None
-            
-            # 发送到机械臂
-            if self.enable_online_smooth:
-                controller.setJointTargetOnline(joint_angles)
-                controller.setGripperTargetOnline(gripper_angle)
+            if len(arm_action) == self.joint_count_per_arm + 1:  # 6个关节 + 1个夹爪
+                joint_angles = arm_action[:self.joint_count_per_arm].tolist()
+                gripper_angle = arm_action[-1].item()
             else:
-                controller.joint_controller.set_joint_angles(joint_angles)
-                controller.joint_controller.set_gripper(gripper_angle)
-            sent_actions.append(arm_action)
+                # 如果动作张量形状不符合预期，提供警告
+                if len(arm_action) < self.joint_count_per_arm:
+                    logging.warning(f"{arm_name}动作张量太短：期望至少{self.joint_count_per_arm}个关节，实际{len(arm_action)}个")
+                    # 补充缺失关节值为0
+                    joint_angles = arm_action.tolist() + [0.0] * (self.joint_count_per_arm - len(arm_action))
+                    gripper_angle = None
+                else:
+                    # 关节数量足够，但没有夹爪
+                    joint_angles = arm_action[:self.joint_count_per_arm].tolist()
+                    gripper_angle = None
+            
+            # 应用安全限制（如果配置了max_relative_target）
+            if self.config.max_relative_target is not None:
+                # 读取当前关节位置
+                joint_rad = controller.get_joints()  # 返回弧度值
+                current_joint_angles = joint_rad
+                # 注意：gripper 值（0-100）不需要安全限制，因为范围固定
+                
+                # 限制关节移动范围
+                safe_joint_angles = []
+                for j, (current, target) in enumerate(zip(current_joint_angles, joint_angles)):
+                    max_delta = self.config.max_relative_target
+                    if isinstance(max_delta, list):
+                        # 对于双臂，需要考虑每个机械臂的索引
+                        joint_idx = i * self.joint_count_per_arm + j
+                        max_delta = max_delta[joint_idx] if joint_idx < len(max_delta) else max_delta[-1] if max_delta else None
+                    # 如果max_delta是float/int，直接使用
+                    
+                    if max_delta is not None:
+                        delta = target - current
+                        if abs(delta) > max_delta:
+                            safe_target = current + (max_delta if delta > 0 else -max_delta)
+                            logging.warning(f"{arm_name}关节{j+1}移动幅度过大，已限制: {delta:.4f} -> {max_delta:.4f}")
+                        else:
+                            safe_target = target
+                        safe_joint_angles.append(safe_target)
+                    else:
+                        safe_joint_angles.append(target)
+                
+                joint_angles = safe_joint_angles
+            
+            # 发送命令到机械臂
+            # 新 SDK 使用统一的 set_joint_target 和 set_gripper_target 方法
+            controller.set_joint_target(target_joints=joint_angles, joint_format='rad')
+            if gripper_angle is not None:
+                # 新 SDK 的 set_gripper_target 接受 value 参数（0-100 范围）
+                # gripper_angle 已经是 0-100 范围的值（来自 get_gripper() 返回）
+                controller.set_gripper_target(value=float(gripper_angle), wait_for_completion=False)
+            
+            # 记录实际发送的动作
+            if gripper_angle is not None:
+                sent_actions.append(torch.tensor(joint_angles + [gripper_angle], dtype=torch.float32))
+            else:
+                sent_actions.append(torch.tensor(joint_angles, dtype=torch.float32))
         
         return torch.cat(sent_actions)
     
@@ -288,9 +334,7 @@ class AliciaDMultiRobot:
         if not self.config.mock:
             for arm_name, controller in self.robots.items():
                 if controller is not None:
-                    if self.enable_online_smooth:
-                        controller.stopOnlineSmoothing()
-                    controller.session.joint_controller.disconnect()
+                    controller.disconnect()
                     logging.info(f"已断开{arm_name}机械臂")
         
         self.is_connected = False
