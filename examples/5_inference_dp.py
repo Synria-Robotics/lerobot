@@ -28,6 +28,7 @@ def main():
     robot.connect()
 
     # 加载策略
+    robot.set_speed_factor(30)
     ckpt_path = "outputs/train/dp_alicia_duo_grasp/checkpoints/100000/pretrained_model"
     policy = DiffusionPolicy.from_pretrained(ckpt_path)
     policy.to(device)

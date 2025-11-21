@@ -350,7 +350,7 @@ class AliciaDRobot:
         
         # 发送命令到机械臂
         # 新 SDK 使用统一的 set_joint_target 和 set_gripper_target 方法
-        self.controller.set_joint_target(target_joints=joint_angles, joint_format='rad')
+        self.controller.set_joint_target(target_joints=joint_angles, joint_format='rad', wait_for_completion=False)
         if gripper_angle is not None:
             # 新 SDK 的 set_gripper_target 接受 value 参数（0-100 范围）
             # gripper_angle 已经是 0-100 范围的值（来自 get_gripper() 返回）
@@ -362,6 +362,9 @@ class AliciaDRobot:
         else:
             return torch.tensor(joint_angles, dtype=torch.float32)
     
+    def set_speed(self, speed: float):
+        """设置运动速度。"""
+        self.controller.set_speed(speed)
 
     def moveHome(self):
         """移动到初始位置。"""
