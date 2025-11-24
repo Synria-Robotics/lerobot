@@ -68,6 +68,9 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     ```
     # cd /path/to/Alicia-D-SDK
     cd Alicia-D-SDK
+    # 检查是否在v6.0.0分支，若否执行下方注释的命令
+    git branch
+    # git checkout v6.0.0
     # 使用 pip 安装 SDK
     pip install -e .
     ```
