@@ -1,343 +1,317 @@
-<p align="center">
-  <img alt="LeRobot, Hugging Face Robotics Library" src="https://raw.githubusercontent.com/huggingface/lerobot/main/media/lerobot-logo-thumbnail.png" width="100%">
-  <br/>
-  <br/>
-</p>
+# Alicia-D 机械臂 - LeRobot 框架快速上手指南
 
-<div align="center">
+欢迎使用 Alicia-D 机械臂与 LeRobot 框架！本指南将帮助您快速设置环境、安装必要的软件，并开始使用 Alicia-D 机械臂收集数据。即使您是机器人或编程新手，也能轻松上手。
 
-[![Tests](https://github.com/huggingface/lerobot/actions/workflows/nightly.yml/badge.svg?branch=main)](https://github.com/huggingface/lerobot/actions/workflows/nightly.yml?query=branch%3Amain)
-[![Python versions](https://img.shields.io/pypi/pyversions/lerobot)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/huggingface/lerobot/blob/main/LICENSE)
-[![Status](https://img.shields.io/pypi/status/lerobot)](https://pypi.org/project/lerobot/)
-[![Version](https://img.shields.io/pypi/v/lerobot)](https://pypi.org/project/lerobot/)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.1-ff69b4.svg)](https://github.com/huggingface/lerobot/blob/main/CODE_OF_CONDUCT.md)
-[![Discord](https://dcbadge.vercel.app/api/server/C5P34WJ68S?style=flat)](https://discord.gg/s3KuuzsPFb)
+## 目录
 
-<!-- [![Coverage](https://codecov.io/gh/huggingface/lerobot/branch/main/graph/badge.svg?token=TODO)](https://codecov.io/gh/huggingface/lerobot) -->
-
-</div>
-
-<h2 align="center">
-    <p><a href="https://huggingface.co/docs/lerobot/hope_jr">
-        Build Your Own HopeJR Robot!</a></p>
-</h2>
-
-<div align="center">
-  <img
-    src="https://raw.githubusercontent.com/huggingface/lerobot/main/media/hope_jr/hopejr.png"
-    alt="HopeJR robot"
-    title="HopeJR robot"
-    width="60%"
-  />
-
-  <p><strong>Meet HopeJR – A humanoid robot arm and hand for dexterous manipulation!</strong></p>
-  <p>Control it with exoskeletons and gloves for precise hand movements.</p>
-  <p>Perfect for advanced manipulation tasks! 🤖</p>
-
-  <p><a href="https://huggingface.co/docs/lerobot/hope_jr">
-      See the full HopeJR tutorial here.</a></p>
-</div>
-
-<br/>
-
-<h2 align="center">
-    <p><a href="https://huggingface.co/docs/lerobot/so101">
-        Build Your Own SO-101 Robot!</a></p>
-</h2>
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center"><img src="https://raw.githubusercontent.com/huggingface/lerobot/main/media/so101/so101.webp" alt="SO-101 follower arm" title="SO-101 follower arm" width="90%"/></td>
-      <td align="center"><img src="https://raw.githubusercontent.com/huggingface/lerobot/main/media/so101/so101-leader.webp" alt="SO-101 leader arm" title="SO-101 leader arm" width="90%"/></td>
-    </tr>
-  </table>
-
-  <p><strong>Meet the updated SO100, the SO-101 – Just €114 per arm!</strong></p>
-  <p>Train it in minutes with a few simple moves on your laptop.</p>
-  <p>Then sit back and watch your creation act autonomously! 🤯</p>
-
-  <p><a href="https://huggingface.co/docs/lerobot/so101">
-      See the full SO-101 tutorial here.</a></p>
-
-  <p>Want to take it to the next level? Make your SO-101 mobile by building LeKiwi!</p>
-  <p>Check out the <a href="https://huggingface.co/docs/lerobot/lekiwi">LeKiwi tutorial</a> and bring your robot to life on wheels.</p>
-
-  <img src="https://raw.githubusercontent.com/huggingface/lerobot/main/media/lekiwi/kiwi.webp" alt="LeKiwi mobile robot" title="LeKiwi mobile robot" width="50%">
-</div>
-
-<br/>
-
-<h3 align="center">
-    <p>LeRobot: State-of-the-art AI for real-world robotics</p>
-</h3>
+1.  [系统要求](#1-系统要求)
+2.  [安装 Alicia-D SDK](#2-安装-alicia-duo-sdk)
+3.  [安装 LeRobot 框架](#3-安装-lerobot-框架)
+4.  [连接 Alicia-D 机械臂](#4-连接-alicia-duo-机械臂)
+5.  [配置数据收集参数](#5-配置数据收集参数)
+6.  [开始数据收集](#6-开始数据收集)
+7.  [常见问题与故障排除](#7-常见问题与故障排除)
+8.  [可视化已收集的数据集](#8-可视化已收集的数据集)
 
 ---
 
-🤗 LeRobot aims to provide models, datasets, and tools for real-world robotics in PyTorch. The goal is to lower the barrier to entry to robotics so that everyone can contribute and benefit from sharing datasets and pretrained models.
+## 1. 系统要求
 
-🤗 LeRobot contains state-of-the-art approaches that have been shown to transfer to the real-world with a focus on imitation learning and reinforcement learning.
+*   **操作系统**: 推荐使用 Linux (例如 Ubuntu 20.04 或更高版本)。本指南主要基于 Linux 环境。
+*   **Python**: 版本 3.10 或更高。
+*   **硬件**:
+    *   Alicia-D 机械臂。
+    *   一台用于连接和控制机械臂的计算机。
+    *   USB 数据线，用于连接计算机和 Alicia-D 机械臂。
+    *   (可选) 如果您希望收集视觉数据，需要至少一个兼容的USB摄像头 (例如普通的网络摄像头)。
 
-🤗 LeRobot already provides a set of pretrained models, datasets with human collected demonstrations, and simulation environments to get started without assembling a robot. In the coming weeks, the plan is to add more and more support for real-world robotics on the most affordable and capable robots out there.
+---
 
-🤗 LeRobot hosts pretrained models and datasets on this Hugging Face community page: [huggingface.co/lerobot](https://huggingface.co/lerobot)
 
-#### Examples of pretrained models on simulation environments
+## 2. 安装 LeRobot 框架
 
-<table>
-  <tr>
-    <td><img src="https://raw.githubusercontent.com/huggingface/lerobot/main/media/gym/aloha_act.gif" width="100%" alt="ACT policy on ALOHA env"/></td>
-    <td><img src="https://raw.githubusercontent.com/huggingface/lerobot/main/media/gym/simxarm_tdmpc.gif" width="100%" alt="TDMPC policy on SimXArm env"/></td>
-    <td><img src="https://raw.githubusercontent.com/huggingface/lerobot/main/media/gym/pusht_diffusion.gif" width="100%" alt="Diffusion policy on PushT env"/></td>
-  </tr>
-  <tr>
-    <td align="center">ACT policy on ALOHA env</td>
-    <td align="center">TDMPC policy on SimXArm env</td>
-    <td align="center">Diffusion policy on PushT env</td>
-  </tr>
-</table>
+LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制 Alicia-D 并收集数据。
 
-## Installation
+1.  **获取 LeRobot**:
+    使用 Git 从 GitHub 克隆 LeRobot 仓库。如果您没有安装 Git，请先安装它 (搜索 "如何安装 Git on [您的操作系统]")。
 
-LeRobot works with Python 3.10+ and PyTorch 2.2+.
+    ```bash
+    # 导航到您希望存放 LeRobot 项目的文件夹
+    cd /path/to/your/projects_directory
 
-### Environment Setup
+    # For Alicia-D-SDK not installed:
+    git clone --recursive git@github.com:Synria-Robotics/lerobot.git -b v6.0.0
+    # For ALicia-D-SDK installed:
+    git clone https://github.com/Synria-Robotics/lerobot.git -b v6.0.0
 
-Create a virtual environment with Python 3.10 and activate it, e.g. with [`miniconda`](https://docs.anaconda.com/free/miniconda/index.html):
 
-```bash
-conda create -y -n lerobot python=3.10
-conda activate lerobot
-```
+    # 进入 LeRobot 文件夹
+    cd lerobot
+    ```
 
-When using `miniconda`, install `ffmpeg` in your environment:
+2.  **创建虚拟环境 (推荐)**:
+    创建`conda`环境：
 
-```bash
-conda install ffmpeg -c conda-forge
-```
+    ```bash
+    conda create -y -n lerobot python=3.10
+    conda activate lerobot
+    ```
+    安装环境依赖：
+    ```bash
+    conda install ffmpeg -c conda-forge
+    ```
 
-> **NOTE:** This usually installs `ffmpeg 7.X` for your platform compiled with the `libsvtav1` encoder. If `libsvtav1` is not supported (check supported encoders with `ffmpeg -encoders`), you can:
->
-> - _[On any platform]_ Explicitly install `ffmpeg 7.X` using:
->
-> ```bash
-> conda install ffmpeg=7.1.1 -c conda-forge
-> ```
->
-> - _[On Linux only]_ Install [ffmpeg build dependencies](https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu#GettheDependencies) and [compile ffmpeg from source with libsvtav1](https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu#libsvtav1), and make sure you use the corresponding ffmpeg binary to your install with `which ffmpeg`.
 
-### Install LeRobot 🤗
+3. **安装 Alicia-D SDK**
 
-#### From Source
+    Alicia-D SDK (Software Development Kit) 是控制 Alicia-D 机械臂和读取其数据的核心软件库。
+    ```
+    # cd /path/to/Alicia-D-SDK
+    cd Alicia-D-SDK
+    # 使用 pip 安装 SDK
+    pip install -e .
+    ```
 
-First, clone the repository and navigate into the directory:
+---
 
-```bash
-git clone https://github.com/huggingface/lerobot.git
-cd lerobot
-```
+4.  **安装 LeRobot 及其依赖**:
 
-Then, install the library in editable mode. This is useful if you plan to contribute to the code.
+    ```bash
+    # 确保您在 lerobot 文件夹的根目录下
+    # 安装 LeRobot 及其核心依赖
+    cd .. # Enter the path for lerobot setup
+    pip install -e .
+    ```
+    这将安装 LeRobot 框架本身以及运行它所必需的库。且请注意torch torchvision cuda ffmpeg 的版本匹配问题
 
-```bash
-pip install -e .
-```
+---
 
-> **NOTE:** If you encounter build errors, you may need to install additional dependencies (`cmake`, `build-essential`, and `ffmpeg libs`). On Linux, run:
-> `sudo apt-get install cmake build-essential python3-dev pkg-config libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev libswscale-dev libswresample-dev libavfilter-dev`. For other systems, see: [Compiling PyAV](https://pyav.org/docs/develop/overview/installation.html#bring-your-own-ffmpeg)
+## 4. 连接 Alicia-D 机械臂
 
-For simulations, 🤗 LeRobot comes with gymnasium environments that can be installed as extras:
+1.  **物理连接**:
+    *   使用 USB 数据线将 Alicia-D 遥操套件的示教臂连接到您的计算机。
+    *   确保机械臂已通电 (如果需要外部电源)。
+    *   (可选) 如果您要使用摄像头，也将摄像头连接到计算机的USB端口。
 
-- [aloha](https://github.com/huggingface/gym-aloha)
-- [xarm](https://github.com/huggingface/gym-xarm)
-- [pusht](https://github.com/huggingface/gym-pusht)
+2.  **检查连接 (Linux)**:
+    在 Linux 系统上，连接机械臂后，它通常会显示为一个串口设备，例如 `/dev/ttyUSB0` 或 `/dev/ttyACM0`。您可以通过以下命令查看新出现的设备：
+    ```bash
+    ls /dev/ttyUSB*
+    ```
+    LeRobot 框架中的 Alicia-D 驱动默认会自动搜索可用的串口。如果自动搜索失败，您可能需要手动指定端口号。
 
-For instance, to install 🤗 LeRobot with aloha and pusht, use:
+    ```
+    # Add serial port permission
+    sudo chmod 666 /dev/ttyUSB*  # temporally
+    sudo usermod -a -G dialout $USER  # permanently
+    ```
 
-```bash
-pip install -e ".[aloha, pusht]"
-```
+3.  **检查连接 (Windows)**:
+    在 Windows 系统上，连接机械臂后，它会显示为一个 `COM` 串口（例如 `COM3`、`COM5`）。您可以通过以下方式查看端口：
 
-### Installation from PyPI
+    - 打开“设备管理器” → 展开“端口 (COM 和 LPT)” → 查找类似 “USB-SERIAL CH340 (COM3)” 或 “Silicon Labs CP210x USB to UART Bridge (COM5)” 的设备名称。
+    - 或使用 `mode` 命令（CMD/PowerShell 均可）：
+      ```cmd
+      mode
+      ```
 
-**Core Library:**
-Install the base package with:
+    如自动搜索失败，可在命令行通过 `--robot.port=COM3` 显式指定端口（将 `COM3` 替换为您的实际端口）。
 
-```bash
-pip install lerobot
-```
+    注意事项：
+    - 若首次连接后未识别端口，可能需要安装对应的 USB 转串口驱动（常见为 CH340 或 CP210x），可从芯片官方或硬件厂商处下载并安装。
+    - 确保没有其他程序占用该串口（如串口调试助手等）。
+    - 保持默认波特率 `1000000`；如需修改，请与设备端设置一致。
+---
 
-_This installs only the default dependencies._
+## 5. 配置数据收集参数
 
-**Extra Features:**
-To install additional functionality, use one of the following:
+LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键参数：
 
-```bash
-pip install 'lerobot[all]'          # All available features
-pip install 'lerobot[aloha,pusht]'  # Specific features (Aloha & Pusht)
-pip install 'lerobot[feetech]'      # Feetech motor support
-```
+- `--robot.type=alicia_d` :设置操作臂类型
+- `--robot.port=/dev/ttyACM0`：设置操作臂端口
+- `--robot.baudrate=1000000`：设置操作臂波特率
+- `--robot.execute_motion=false`：设置不复现下发（默认为false即可）
+- `--teleop.type=leader`：控制方式为示教臂
+- `--teleop.port=/dev/ttyACM0`：示教臂端口
+- `--teleop.baudrate=1000000`：示教臂波特率
+- `--dataset.repo_id=yourname/alicia_leader_dataset`：数据集ID
+- `--dataset.root=/home/ubuntu/vla/vla_datasets`：数据集本地路径
+- `--dataset.num_episodes=5`：采集轮次
+- `--dataset.episode_time_s=60`：采集单轮时间
+- `--dataset.reset_time_s=30`：采集环境重置时间
+- `--dataset.fps=30`：采集数据频率
+- `--dataset.single_task="pick and place"`：动作命令（language），注意数据集的命令要具有多样性，这样训练出来的模型泛化性要强一些
 
-_Replace `[...]` with your desired features._
+**添加摄像头 (可选):**
 
-**Available Tags:**
-For a full list of optional dependencies, see:
-https://pypi.org/project/lerobot/
+如果您想同时记录来自一个或多个摄像头的视觉数据，您需要直接在 LeRobot 框架的配置文件中进行设置。
 
-### Weights & Biases
+1.  **打开配置文件**:
+    找到并打开 `lerobot/src/lerobot/robots/alicia_d/config_alicia_d.py` 文件。
 
-To use [Weights and Biases](https://docs.wandb.ai/quickstart) for experiment tracking, log in with
+2.  **修改 `AliciaDRobotConfig`**:
+    在该文件中，找到 `AliciaDRobotConfig` 类。您可以修改其 `cameras` 属性来定义您的摄像头。
 
-```bash
-wandb login
-```
+    下面是一个示例，展示了如何配置一个名为 "front" 的前置USB摄像头和一个名为 "wrist" 的腕部USB摄像头:
+    ```python
+  @RobotConfig.register_subclass("alicia_d")
+  @dataclass
+  class AliciaDConfig(RobotConfig):
+    @staticmethod
+    def default_cameras_config() -> dict[str, CameraConfig]:
+        return {
+            "wrist": OpenCVCameraConfig(
+                index_or_path="/dev/video0", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
+            ),
+            "front": OpenCVCameraConfig(
+                index_or_path="/dev/video6", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
+            ),
+            "top": OpenCVCameraConfig(
+                index_or_path="/dev/video7", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
+            ),
+        }
+    # 串口/波特率
+    port: str | None = None  # None 表示让 SDK 自行扫描
+    baudrate: int = 1_000_000
 
-(note: you will also need to enable WandB in the configuration. See below.)
+    # 断开连接时的安全选项（与其它机器人保持一致语义）
+    disable_torque_on_disconnect: bool = True
 
-### Visualize datasets
+    # 安全限制：每个关节相对目标的最大允许变化（弧度）。
+    # 可设为 float（统一值）或按关节名的 dict[str, float]
+    max_relative_target: float | dict[str, float] | None = None
 
-Check out [example 1](https://github.com/huggingface/lerobot/blob/main/examples/dataset/load_lerobot_dataset.py) that illustrates how to use our dataset class which automatically downloads data from the Hugging Face hub.
+    # 摄像头
+    cameras: dict[str, CameraConfig] = field(default_factory=lambda: AliciaDConfig.default_cameras_config())
 
-You can also locally visualize episodes from a dataset on the hub by executing our script from the command line:
+    # 是否实际执行动作（False=只记录，不下发到硬件）
+    execute_motion: bool = False
+    ```
 
-```bash
-lerobot-dataset-viz \
-    --repo-id lerobot/pusht \
-    --episode-index 0
-```
+    *   **`cameras` 字典**: 这是一个字典，键是您为摄像头指定的名称 (例如 `"front"`, `"wrist_cam"`), 值是 `OpenCVCameraConfig` (或其他摄像头类型的配置对象)。
+    *   **`OpenCVCameraConfig` 参数**:
+        *   `camera_index`: 对于USB摄像头，这通常是一个数字索引 (0, 1, ...)，或者是设备文件的路径 (例如 `"/dev/video0"`)。
+        *   `fps`: 摄像头的帧率。
+        *   `width`, `height`: 图像的分辨率。
+        *   `rotation`: 如果您的摄像头安装方向导致图像是旋转的，可以使用此参数进行校正 (例如 `90`, `180`, `-90`)。
+    *   您可以根据您的实际摄像头数量和参数修改此部分。如果不需要摄像头，可以将 `cameras` 字典设置为空 `field(default_factory=dict)`。
 
-or from a dataset in a local folder with the `root` option and the `--local-files-only` (in the following case the dataset will be searched for in `./my_local_data_dir/lerobot/pusht`)
+修改完 `configs.py` 文件并保存后，当您运行数据收集脚本时，LeRobot 将自动使用这些配置来连接和记录摄像头数据。命令行中不再需要添加 `--robot.cameras...` 参数。
 
-```bash
-lerobot-dataset-viz \
-    --repo-id lerobot/pusht \
-    --root ./my_local_data_dir \
-    --local-files-only 1 \
-    --episode-index 0
-```
+---
 
-It will open `rerun.io` and display the camera streams, robot states and actions, like this:
+## 6. 开始数据收集
 
-https://github-production-user-asset-6210df.s3.amazonaws.com/4681518/328035972-fd46b787-b532-47e2-bb6f-fd536a55a7ed.mov?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20240505%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240505T172924Z&X-Amz-Expires=300&X-Amz-Signature=d680b26c532eeaf80740f08af3320d22ad0b8a4e4da1bcc4f33142c15b509eda&X-Amz-SignedHeaders=host&actor_id=24889239&key_id=0&repo_id=748713144
+一切准备就绪后，打开您的终端，确保您处于已激活 LeRobot 虚拟环境的 `lerobot` 文件夹根目录下。然后运行 `control_robot.py` 脚本并附带上您配置好的参数。
 
-Our script can also visualize datasets stored on a distant server. See `lerobot-dataset-viz --help` for more instructions.
-
-### The `LeRobotDataset` format
-
-A dataset in `LeRobotDataset` format is very simple to use. It can be loaded from a repository on the Hugging Face hub or a local folder simply with e.g. `dataset = LeRobotDataset("lerobot/aloha_static_coffee")` and can be indexed into like any Hugging Face and PyTorch dataset. For instance `dataset[0]` will retrieve a single temporal frame from the dataset containing observation(s) and an action as PyTorch tensors ready to be fed to a model.
-
-A specificity of `LeRobotDataset` is that, rather than retrieving a single frame by its index, we can retrieve several frames based on their temporal relationship with the indexed frame, by setting `delta_timestamps` to a list of relative times with respect to the indexed frame. For example, with `delta_timestamps = {"observation.image": [-1, -0.5, -0.2, 0]}` one can retrieve, for a given index, 4 frames: 3 "previous" frames 1 second, 0.5 seconds, and 0.2 seconds before the indexed frame, and the indexed frame itself (corresponding to the 0 entry). See example [1_load_lerobot_dataset.py](https://github.com/huggingface/lerobot/blob/main/examples/dataset/load_lerobot_dataset.py) for more details on `delta_timestamps`.
-
-Under the hood, the `LeRobotDataset` format makes use of several ways to serialize data which can be useful to understand if you plan to work more closely with this format. We tried to make a flexible yet simple dataset format that would cover most type of features and specificities present in reinforcement learning and robotics, in simulation and in real-world, with a focus on cameras and robot states but easily extended to other types of sensory inputs as long as they can be represented by a tensor.
-
-Here are the important details and internal structure organization of a typical `LeRobotDataset` instantiated with `dataset = LeRobotDataset("lerobot/aloha_static_coffee")`. The exact features will change from dataset to dataset but not the main aspects:
-
-```
-dataset attributes:
-  ├ hf_dataset: a Hugging Face dataset (backed by Arrow/parquet). Typical features example:
-  │  ├ observation.images.cam_high (VideoFrame):
-  │  │   VideoFrame = {'path': path to a mp4 video, 'timestamp' (float32): timestamp in the video}
-  │  ├ observation.state (list of float32): position of an arm joints (for instance)
-  │  ... (more observations)
-  │  ├ action (list of float32): goal position of an arm joints (for instance)
-  │  ├ episode_index (int64): index of the episode for this sample
-  │  ├ frame_index (int64): index of the frame for this sample in the episode ; starts at 0 for each episode
-  │  ├ timestamp (float32): timestamp in the episode
-  │  ├ next.done (bool): indicates the end of an episode ; True for the last frame in each episode
-  │  └ index (int64): general index in the whole dataset
-  ├ meta: a LeRobotDatasetMetadata object containing:
-  │  ├ info: a dictionary of metadata on the dataset
-  │  │  ├ codebase_version (str): this is to keep track of the codebase version the dataset was created with
-  │  │  ├ fps (int): frame per second the dataset is recorded/synchronized to
-  │  │  ├ features (dict): all features contained in the dataset with their shapes and types
-  │  │  ├ total_episodes (int): total number of episodes in the dataset
-  │  │  ├ total_frames (int): total number of frames in the dataset
-  │  │  ├ robot_type (str): robot type used for recording
-  │  │  ├ data_path (str): formattable string for the parquet files
-  │  │  └ video_path (str): formattable string for the video files (if using videos)
-  │  ├ episodes: a DataFrame containing episode metadata with columns:
-  │  │  ├ episode_index (int): index of the episode
-  │  │  ├ tasks (list): list of tasks for this episode
-  │  │  ├ length (int): number of frames in this episode
-  │  │  ├ dataset_from_index (int): start index of this episode in the dataset
-  │  │  └ dataset_to_index (int): end index of this episode in the dataset
-  │  ├ stats: a dictionary of statistics (max, mean, min, std) for each feature in the dataset, for instance
-  │  │  ├ observation.images.front_cam: {'max': tensor with same number of dimensions (e.g. `(c, 1, 1)` for images, `(c,)` for states), etc.}
-  │  │  └ ...
-  │  └ tasks: a DataFrame containing task information with task names as index and task_index as values
-  ├ root (Path): local directory where the dataset is stored
-  ├ image_transforms (Callable): optional image transformations to apply to visual modalities
-  └ delta_timestamps (dict): optional delta timestamps for temporal queries
-```
-
-A `LeRobotDataset` is serialised using several widespread file formats for each of its parts, namely:
-
-- hf_dataset stored using Hugging Face datasets library serialization to parquet
-- videos are stored in mp4 format to save space
-- metadata are stored in plain json/jsonl files
-
-Dataset can be uploaded/downloaded from the HuggingFace hub seamlessly. To work on a local dataset, you can specify its location with the `root` argument if it's not in the default `~/.cache/huggingface/lerobot` location.
-
-#### Reproduce state-of-the-art (SOTA)
-
-We provide some pretrained policies on our [hub page](https://huggingface.co/lerobot) that can achieve state-of-the-art performances.
-You can reproduce their training by loading the config from their run. Simply running:
+**示例命令 (假设摄像头已在 `configs.py` 中配置):**
 
 ```bash
-lerobot-train --config_path=lerobot/diffusion_pusht
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+
+lerobot-record \
+  --robot.type=alicia_d \
+  --robot.port=/dev/ttyUSB1 \
+  --robot.baudrate=1000000 \
+  --robot.execute_motion=false \
+  --teleop.type=leader \
+  --teleop.port=/dev/ttyUSB0 \
+  --teleop.baudrate=1000000 \
+  --dataset.repo_id=local/alicia_dataset \
+  --dataset.root=/home/ubuntu/vla/datasets \
+  --dataset.num_episodes=5 \
+  --dataset.episode_time_s=60 \
+  --dataset.reset_time_s=30 \
+  --dataset.fps=30 \
+  --dataset.single_task="pick and place" \
+  --dataset.video=true \
+  --dataset.push_to_hub=false \
+  --display_data=true \
+  --play_sounds=false
 ```
+**请务必将 `/home/ubuntu/lerobot_datasets` 和 `ubuntu/alicia_demo_dataset` 替换为您自己的路径和数据集标识符（用户名/数据集名称格式）。**
 
-reproduces SOTA results for Diffusion Policy on the PushT task.
 
-## Contribute
+**数据收集中:**
 
-If you would like to contribute to 🤗 LeRobot, please check out our [contribution guide](https://github.com/huggingface/lerobot/blob/main/CONTRIBUTING.md).
+*   脚本运行后，会首先连接机械臂和摄像头。
+*   **记录阶段**: LeRobot 会提示开始记录。在此期间，您操作 Alicia-D 机械臂执行任务，LeRobot 会记录下机械臂的关节状态、夹爪状态以及摄像头图像 (如果配置了)。此阶段持续 `episode_time_s` 秒。
+*   **重置阶段**: 一个回合记录完成后，您有 `reset_time_s` 秒的时间将场景和机械臂复位，为下一个回合做准备。
+*   这个过程会重复 `num_episodes` 次。
 
-### Add a pretrained policy
+数据收集完成后，您可以在您指定的 `--dataset.root` 路径下找到生成的数据集文件夹。
 
-Once you have trained a policy you may upload it to the Hugging Face hub using a hub id that looks like `${hf_user}/${repo_name}` (e.g. [lerobot/diffusion_pusht](https://huggingface.co/lerobot/diffusion_pusht)).
+---
 
-You first need to find the checkpoint folder located inside your experiment directory (e.g. `outputs/train/2024-05-05/20-21-12_aloha_act_default/checkpoints/002500`). Within that there is a `pretrained_model` directory which should contain:
+## 7. 数据集训练
 
-- `config.json`: A serialized version of the policy configuration (following the policy's dataclass config).
-- `model.safetensors`: A set of `torch.nn.Module` parameters, saved in [Hugging Face Safetensors](https://huggingface.co/docs/safetensors/index) format.
-- `train_config.json`: A consolidated configuration containing all parameters used for training. The policy configuration should match `config.json` exactly. This is useful for anyone who wants to evaluate your policy or for reproducibility.
+LeRobot 支持两种数据集训练方式：使用本地数据集和使用 HuggingFace Hub 上的数据集。两种方式都使用相同的 `repo_id` 格式，主要区别在于是否需要 `root` 参数：
 
-To upload these to the hub, run the following:
+- **本地数据集**: `repo_id` 使用 `username/dataset_name` 格式，需要配合 `root` 参数指定数据集的父目录
+- **HuggingFace Hub 数据集**: `repo_id` 使用 `username/dataset_name` 格式，无需 `root` 参数（自动从 Hub 下载）
+
+### 本地数据集训练
+对于本地数据集，使用与数据收集时相同的 `repo_id` 格式（`username/dataset_name`），`root` 参数应该指向包含数据集的父目录：
+
+**重要说明**: 
+- 本地数据集目录结构：`root_directory/username/dataset_name/`
+- 数据收集时创建的文件夹结构会是：`/your/root/path/username/dataset_name/`
+
+**配置方法**:
+- `repo_id`: 与数据收集时使用的相同格式（例如 `my_user/alicia_visual_demo_dataset`）
+- `root`: 包含数据集文件夹的父目录路径（例如 `/home/ubuntu/lerobot_datasets`）
 
 ```bash
-huggingface-cli upload ${hf_user}/${repo_name} path/to/pretrained_model
+python lerobot/scripts/train.py \
+    --policy.type=diffusion \
+    --dataset.repo_id=username/dataset_name \
+    --dataset.root=/path/to/parent/directory \
+    --output_dir=/path/to/training_result
 ```
 
-See [eval.py](https://github.com/huggingface/lerobot/blob/main/src/lerobot/scripts/eval.py) for an example of how other people may use your policy.
-
-### Acknowledgment
-
-- The LeRobot team 🤗 for building SmolVLA [Paper](https://arxiv.org/abs/2506.01844), [Blog](https://huggingface.co/blog/smolvla).
-- Thanks to Tony Zhao, Zipeng Fu and colleagues for open sourcing ACT policy, ALOHA environments and datasets. Ours are adapted from [ALOHA](https://tonyzhaozh.github.io/aloha) and [Mobile ALOHA](https://mobile-aloha.github.io).
-- Thanks to Cheng Chi, Zhenjia Xu and colleagues for open sourcing Diffusion policy, Pusht environment and datasets, as well as UMI datasets. Ours are adapted from [Diffusion Policy](https://diffusion-policy.cs.columbia.edu) and [UMI Gripper](https://umi-gripper.github.io).
-- Thanks to Nicklas Hansen, Yunhai Feng and colleagues for open sourcing TDMPC policy, Simxarm environments and datasets. Ours are adapted from [TDMPC](https://github.com/nicklashansen/tdmpc) and [FOWM](https://www.yunhaifeng.com/FOWM).
-- Thanks to Antonio Loquercio and Ashish Kumar for their early support.
-- Thanks to [Seungjae (Jay) Lee](https://sjlee.cc/), [Mahi Shafiullah](https://mahis.life/) and colleagues for open sourcing [VQ-BeT](https://sjlee.cc/vq-bet/) policy and helping us adapt the codebase to our repository. The policy is adapted from [VQ-BeT repo](https://github.com/jayLEE0301/vq_bet_official).
-
-## Citation
-
-If you want, you can cite this work with:
-
-```bibtex
-@misc{cadene2024lerobot,
-    author = {Cadene, Remi and Alibert, Simon and Soare, Alexander and Gallouedec, Quentin and Zouitine, Adil and Palma, Steven and Kooijmans, Pepijn and Aractingi, Michel and Shukor, Mustafa and Aubakirova, Dana and Russi, Martino and Capuano, Francesco and Pascal, Caroline and Choghari, Jade and Moss, Jess and Wolf, Thomas},
-    title = {LeRobot: State-of-the-art Machine Learning for Real-World Robotics in Pytorch},
-    howpublished = "\url{https://github.com/huggingface/lerobot}",
-    year = {2024}
-}
+**示例**:
+```bash
+lerobot-train \
+  --policy.type=act \
+  --dataset.root=/home/ubuntu/lerobot/datasets \
+  --dataset.repo_id=local/alicia_leader_dataset \
+  --policy.repo_id=local/alicia_pi_ft \
+  --output_dir=/home/ubuntu/vla/outputs \
+  --job_name=smolvla_ft_alicia \
+  --policy.device=cuda \
+  --wandb.enable=false
 ```
 
-## Star History
+## 8. 模型验证
+进入训练结果
+```/path_to_training_result/checkpoints/last/pretrained_model/config.json```
 
-[![Star History Chart](https://api.star-history.com/svg?repos=huggingface/lerobot&type=Timeline)](https://star-history.com/#huggingface/lerobot&Timeline)
+参考`inference.py`修改对应参数验证训练结果
 
-```
+## 9. 常见问题与故障排除
 
-```
+*   **"未找到 Alicia-D SDK" 或 "ArmController 未初始化"**:
+    *   请确保您已正确安装 Alicia-D SDK (参见步骤2)。
+    *   确认您在运行 LeRobot 命令时，Alicia-D SDK 所在的 Python 环境是激活的 (或者它已安装到全局 Python 环境中，并且 LeRobot 使用的是同一个 Python 解释器)。
+
+*   **"无法连接到 Alicia-D 机械臂"**:
+    *   检查 USB 连接是否牢固，机械臂是否已通电。
+    *   确认机械臂的串口是否被其他程序占用。
+    *   尝试手动指定 `--robot.port` 参数，例如 `--robot.port=/dev/ttyUSB0`。您可能需要尝试不同的数字 (ttyUSB0, ttyUSB1 等)。
+    *   在 Linux 上，您可能需要串口的读写权限。尝试将您的用户添加到 `dialout` 组：`sudo usermod -a -G dialout $USER`，然后**重启计算机**或重新登录。
+
+*   **"AttributeError: 'AliciaDuoRobot' object has no attribute 'some_feature'"**:
+    *   这通常表示 Alicia-D 的 LeRobot 驱动实现 (`alicia_d.py`) 可能缺少了框架期望的某些属性或方法。请确保您使用的是最新或兼容版本的 LeRobot 和 Alicia-D 驱动。如果问题是最近集成的，可能需要开发者进一步调试。
+
+*   **摄像头无法工作或报错**:
+    *   确保摄像头已正确连接到 USB 端口。
+    *   使用 `--robot.cameras.YOUR_CAM_NAME.camera_index` 指定的摄像头索引是否正确。您可以使用 `lerobot/common/robot_devices/cameras/opencv.py --images-dir outputs/cam_test` 来测试和识别摄像头索引。
+    *   尝试降低摄像头的 `--fps` 或分辨率 (`--width`, `--height`)，某些 USB 总线或摄像头可能不支持高参数配置。
+
+*   **数据记录频率不理想**:
+    *   如果 `--control.fps` 设置得很高，但实际感觉卡顿或日志显示帧率较低，可能是计算机性能瓶颈，或者摄像头/机械臂通信延迟。
+    *   确保您的 `--robot.max_relative_target` (在 `lerobot/common/robot_devices/robots/configs.py` 中 `AliciaDRobotConfig` 定义或通过命令行覆盖) 设置合理，以允许平滑运动。
+
+如果您遇到其他问题，建议查看终端输出的详细错误信息，并可以查阅 LeRobot 的 GitHub Issues 或向 Synria Robotics 技术支持寻求帮助。
+
+---
