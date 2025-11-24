@@ -69,7 +69,6 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     # cd /path/to/Alicia-D-SDK
     cd Alicia-D-SDK
     # 使用 pip 安装 SDK
-    pip install -r requirement.txt
     pip install -e .
     ```
 
@@ -83,7 +82,7 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     cd .. # Enter the path for lerobot setup
     pip install -e .
     ```
-    这将安装 LeRobot 框架本身以及运行它所必需的库。
+    这将安装 LeRobot 框架本身以及运行它所必需的库。且请注意torch torchvision cuda ffmpeg 的版本匹配问题
 
 ---
 
