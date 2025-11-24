@@ -30,9 +30,9 @@ except Exception:
 
 
 # ===== 固定配置（可按需修改） =====
-FPS = 20
+FPS = 30
 TASK_TEXT = "pick up the cube"
-PRETRAINED = "/home/ubuntu/vla/outputs/train/alicia_smolvla_ft/checkpoints/last/pretrained_model"  # 可改为本地目录
+PRETRAINED = "/home/ubuntu/vla/outputs/checkpoints/last/pretrained_model"  # 可改为本地目录
 
 # 实机执行动作
 EXECUTE_MOTION = True
@@ -84,9 +84,23 @@ def main() -> int:
 
     # 2) 加载 SmolVLA（预训练）并创建预/后处理器
     device = resolve_device()
+    print(f"检测到设备: {device}")
+    print(f"CUDA可用: {torch.cuda.is_available()}, GPU数量: {torch.cuda.device_count()}")
+    if torch.cuda.is_available():
+        print(f"当前CUDA设备: {torch.cuda.current_device()}, 设备名称: {torch.cuda.get_device_name(0)}")
+    
     policy_cls = get_policy_class("smolvla")
     policy = policy_cls.from_pretrained(PRETRAINED)
     policy.to(device)
+    policy.eval()  # 设置为评估模式
+    
+    # 验证模型是否在GPU上
+    try:
+        first_param = next(policy.parameters())
+        print(f"模型参数设备: {first_param.device}")
+    except StopIteration:
+        print("警告: 模型没有可训练参数")
+    
     # 让处理器与模型同设备运行
     preproc, postproc = make_pre_post_processors(
         policy.config,
@@ -96,27 +110,31 @@ def main() -> int:
     )
 
     print(f"已加载策略: {PRETRAINED} | device={device} | FPS={FPS}")
-
     try:
         dt_target = 1.0 / max(1, FPS)
+        frame_count = 0
         while True:
             t0 = time.perf_counter()
+            frame_count += 1
 
             # 2.1 采集观测（关节角 + 图像 + 任务文本）
             obs_raw = robot.get_observation()
             joint_positions = obs_raw.get("joint_positions")
             gripper_pos = float(obs_raw.get("gripper.pos", 0.0))
-            if not joint_positions or len(joint_positions) < 6:
+            if joint_positions is None or len(joint_positions) < 6:
                 print("警告：未获取到关节角，跳过本帧")
                 time.sleep(dt_target)
                 continue
 
             wrist_frame = obs_raw.get("wrist")
-            #front_frame = obs_raw.get("front")
-            # if wrist_frame is None or front_frame is None:
-            #     print("警告：未获取到相机帧，跳过本帧")
-            #     time.sleep(dt_target)
-            #     continue
+            top_frame = obs_raw.get("top")
+            front_frame = obs_raw.get("front")
+
+            # 至少要有腕部/俯视图像；正面相机可选，但如果也给了就一起用
+            if wrist_frame is None or top_frame is None:
+                print("警告：主要相机帧缺失（wrist/top），跳过本帧")
+                time.sleep(dt_target)
+                continue
 
             state_vec = [float(x) for x in joint_positions] + [gripper_pos]
 
@@ -124,21 +142,37 @@ def main() -> int:
             obs_dict: dict[str, torch.Tensor | str] = {
                 "observation.state": torch.tensor(state_vec, dtype=torch.float32),
                 "observation.images.wrist": _to_chw_float_tensor(wrist_frame),
-                #"observation.images.front": _to_chw_float_tensor(front_frame),
+                "observation.images.top": _to_chw_float_tensor(top_frame),
+                "observation.images.front": _to_chw_float_tensor(front_frame),
+            #在此处修改需要输入的命令，不想输入就直接使用TASK_TEXT
                 "task": TASK_TEXT,
             }
+            if front_frame is not None:
+                obs_dict["observation.images.front"] = _to_chw_float_tensor(front_frame)
 
             # 兼容某些预训练配置期望的相机键名（camera1/2/3）
             obs_dict["observation.images.camera1"] = obs_dict["observation.images.wrist"]
-            #obs_dict["observation.images.camera2"] = obs_dict["observation.images.front"]
-            # obs_dict["observation.images.camera3"] = obs_dict["observation.images.front"]
+            obs_dict["observation.images.camera2"] = obs_dict["observation.images.top"]
+            if "observation.images.front" in obs_dict:
+                obs_dict["observation.images.camera3"] = obs_dict["observation.images.front"]
 
             # 2.2 预处理（tokenize/normalize/加 batch/放到设备）
             obs_proc = preproc(obs_dict)
+            
+            # 调试：只在第一帧检查设备（避免刷屏）
+            if frame_count == 1 and isinstance(obs_proc, dict):
+                for k, v in obs_proc.items():
+                    if isinstance(v, torch.Tensor):
+                        print(f"[调试] 预处理后 {k} 设备: {v.device}, shape: {v.shape}, dtype: {v.dtype}")
+                # 检查所有tensor设备
+                tensor_devices = {k: v.device for k, v in obs_proc.items() if isinstance(v, torch.Tensor)}
+                print(f"[调试] 所有预处理tensor设备: {tensor_devices}")
 
             # 2.3 推理一个动作（关节角）并后处理（反归一化/移到CPU）
             with torch.inference_mode():
                 action_tensor = policy.select_action(obs_proc)  # (B, action_dim)
+                if frame_count == 1 and isinstance(action_tensor, torch.Tensor):
+                    print(f"[调试] 推理输出设备: {action_tensor.device}, shape: {action_tensor.shape}")
             action_processed = postproc(action_tensor).detach()
             action_vec = action_processed.squeeze(0).cpu() if action_processed.ndim > 1 else action_processed.cpu()
 

@@ -32,7 +32,10 @@ class AliciaDConfig(RobotConfig):
                 index_or_path="/dev/video0", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
             ),
             "front": OpenCVCameraConfig(
-                index_or_path="/dev/video2", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
+                index_or_path="/dev/video6", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
+            ),
+            "top": OpenCVCameraConfig(
+                index_or_path="/dev/video7", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
             ),
         }
     # 串口/波特率

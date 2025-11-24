@@ -28,8 +28,11 @@ from lerobot.utils.errors import DeviceAlreadyConnectedError, DeviceNotConnected
 from ..robot import Robot
 from ..utils import ensure_safe_goal_position
 from .config_alicia_d import AliciaDConfig
-from .sdk_registry import get_controller, release_controller
-
+try:
+    import alicia_d_sdk
+except ImportError:
+    logging.warning("未找到Alicia-D SDK。请确保已正确安装`alicia_d_sdk`包。")
+    alicia_d_sdk = None
 
 logger = logging.getLogger(__name__)
 
@@ -50,40 +53,21 @@ class AliciaD(Robot):
         super().__init__(config)
         self.config = config
 
-        # 延迟导入 SDK（v6.0.0），支持从本仓库子模块回退导入
-        import sys
-        from pathlib import Path
-
-        self._sdk_available = False
-        self._controller = None
-        self._sdk_mod = None
-
-        try:
-            import alicia_d_sdk  # type: ignore
-
-            self._sdk_mod = alicia_d_sdk
-            self._sdk_available = True
-        except Exception:
-            # fallback: 尝试从本仓库子模块路径导入
-            try:
-                repo_root = Path(__file__).resolve().parents[5]
-                sdk_dir = repo_root / "lerobot" / "Alicia-D-SDK"
-                if str(sdk_dir) not in sys.path:
-                    sys.path.insert(0, str(sdk_dir))
-                import alicia_d_sdk  # type: ignore
-
-                self._sdk_mod = alicia_d_sdk
-                self._sdk_available = True
-            except Exception:
-                logger.warning("未找到 Alicia-D SDK。请安装 `alicia_d_sdk` 或初始化子模块 `Alicia-D-SDK`。")
-
-        # 单臂相机
+        # 保存 SDK 模块，在 connect() 时创建实例
+        self._sdk = alicia_d_sdk
+        self._controller = self._sdk.create_robot(
+            port=self.config.port,
+            baudrate=self.config.baudrate,
+            robot_version="v5_6",
+            gripper_type="50mm",
+        )
+        
+        # 相机
         self.cameras = make_cameras_from_configs(config.cameras)
 
-        # 关节命名（与旧版一致 6 关节 + 夹爪）
+        # 关节命名
         self._joint_names = [f"joint{i}" for i in range(1, 7)]
         self._gripper_name = "gripper"
-
     # ===== Features =====
     @property
     def _motors_ft(self) -> dict[str, type]:
@@ -95,8 +79,10 @@ class AliciaD(Robot):
 
     @property
     def _cameras_ft(self) -> dict[str, tuple]:
+        # 使用 config.cameras 的键名，确保与 get_observation() 返回的键名一致
         return {
-            cam: (self.config.cameras[cam].height, self.config.cameras[cam].width, 3) for cam in self.cameras
+            cam_key: (self.config.cameras[cam_key].height, self.config.cameras[cam_key].width, 3)
+            for cam_key in self.config.cameras
         }
 
     @cached_property
@@ -120,22 +106,21 @@ class AliciaD(Robot):
         if self.is_connected:
             raise DeviceAlreadyConnectedError(f"{self} already connected")
 
-        # 建立硬件连接
-        if not self._sdk_available:
-            raise DeviceNotConnectedError("Alicia-D SDK 不可用，无法连接硬件。请安装 `alicia_d_sdk` 或初始化子模块。")
+        # # 创建机器人实例（按照示例的方式）
+        # robot_version = getattr(self.config, "robot_version", "v5_6")
+        # gripper_type = getattr(self.config, "gripper_type", "50mm")
+        # port = self.config.port if self.config.port else ""
+        
+        # self._controller = self._sdk.create_robot(
+        #     port=port,
+        #     baudrate=self.config.baudrate,
+        #     robot_version=robot_version,
+        #     gripper_type=gripper_type,
+        # )
 
-        robot_version = getattr(self.config, "robot_version", "v5_6")
-        gripper_type = getattr(self.config, "gripper_type", "50mm")
-        debug_mode = getattr(self.config, "debug_mode", False)
-
-        # 使用共享控制器，便于与示教臂复用同一端口
-        self._controller = get_controller(
-            port=self.config.port,
-            baudrate=self.config.baudrate,
-            robot_version=robot_version,
-            gripper_type=gripper_type,
-            debug_mode=debug_mode,
-        )
+        # 连接控制器
+        if not self._controller.connect():
+            raise RuntimeError("Alicia-D 连接失败，请检查串口与供电。")
 
         # 连接相机
         for cam in self.cameras.values():
@@ -163,16 +148,24 @@ class AliciaD(Robot):
 
         start = time.perf_counter()
 
-        joint_rad = self._controller.get_joints()
-        gripper_rad = self._controller.get_gripper()
+        # 获取关节和夹爪数据
+        joints_raw = self._controller.get_joints()
+        gripper_raw = self._controller.get_gripper()
+        
+        joint_rad = np.asarray(joints_raw, dtype=np.float64)
+        if len(joint_rad) != 6:
+            joint_rad = np.zeros(6, dtype=np.float64)
+        
+        gripper_rad = float(gripper_raw)
+        
         obs_dict: dict[str, Any] = {}
         
         # 关节与夹爪
         for name, val in zip(self._joint_names, joint_rad):
             obs_dict[f"{name}.pos"] = float(val)
-        # 兼容旧逻辑：提供 joint_positions 列表
-        obs_dict["joint_positions"] = [float(v) for v in joint_rad]
-        obs_dict[f"{self._gripper_name}.pos"] = float(gripper_rad)
+        # 兼容旧逻辑：提供 joint_positions 数组，便于 rerun 显示
+        obs_dict["joint_positions"] = joint_rad.astype(np.float32)
+        obs_dict[f"{self._gripper_name}.pos"] = gripper_rad
 
         dt_ms = (time.perf_counter() - start) * 1e3
         logger.debug(f"{self} read state: {dt_ms:.1f}ms")
@@ -182,7 +175,6 @@ class AliciaD(Robot):
             obs_dict[cam_key] = cam.async_read()
             dt_ms = (time.perf_counter() - start) * 1e3
             logger.debug(f"{self} read {cam_key}: {dt_ms:.1f}ms")
-
         return obs_dict
 
     def send_action(self, action: dict[str, Any]) -> dict[str, Any]:
@@ -207,10 +199,10 @@ class AliciaD(Robot):
 
         # 仅当 execute_motion=True 时才下发到硬件
         if getattr(self.config, "execute_motion", False):
-            self._controller.set_joint_target(joint_targets, joint_format="rad")
+            self._controller.set_joint_target(joint_targets, joint_format="rad",wait_for_completion=False)
             if gripper_target is not None:
                 gt = max(0.0, min(100.0, float(gripper_target)))
-                self._controller.set_gripper_target(value=gt)
+                self._controller.set_gripper_target(value=gt,wait_for_completion=False)
 
         sent = {f"{n}.pos": float(v) for n, v in zip(self._joint_names, joint_targets)}
         if gripper_target is not None:
@@ -228,16 +220,24 @@ class AliciaD(Robot):
         # 断开硬件
         try:
             if self._controller is not None:
-                robot_version = getattr(self.config, "robot_version", "v5_6")
-                gripper_type = getattr(self.config, "gripper_type", "50mm")
-                debug_mode = getattr(self.config, "debug_mode", False)
-                release_controller(
-                    port=self.config.port,
-                    baudrate=self.config.baudrate,
-                    robot_version=robot_version,
-                    gripper_type=gripper_type,
-                    debug_mode=debug_mode,
-                )
+                import signal
+                
+                def timeout_handler(signum, frame):
+                    raise TimeoutError("SDK disconnect 超时")
+                
+                # 设置5秒超时
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(5)
+                
+                try:
+                    self._controller.disconnect()
+                    logger.info("Alicia-D 控制器已成功断开")
+                except TimeoutError:
+                    logger.warning("SDK disconnect 超时，强制继续")
+                except Exception as e:
+                    logger.exception(f"断开 Alicia-D 控制器失败: {e}")
+                finally:
+                    signal.alarm(0)  # 取消超时
         finally:
             self._controller = None
 

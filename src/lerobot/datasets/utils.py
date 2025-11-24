@@ -676,7 +676,16 @@ def build_dataset_frame(
         elif ft["dtype"] == "float32" and len(ft["shape"]) == 1:
             frame[key] = np.array([values[name] for name in ft["names"]], dtype=np.float32)
         elif ft["dtype"] in ["image", "video"]:
-            frame[key] = values[key.removeprefix(f"{prefix}.images.")]
+            image_key = key.removeprefix(f"{prefix}.images.")
+            if image_key not in values:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    f"图像键 '{image_key}' 不在观测数据中。"
+                    f"数据集特征键: {key}, 可用键: {list(values.keys())}"
+                )
+                continue
+            frame[key] = values[image_key]
 
     return frame
 
