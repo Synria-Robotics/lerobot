@@ -60,9 +60,15 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     ```bash
     conda install ffmpeg -c conda-forge
     ```
+    我们推荐将版本锁定到
+    Python	3.10	你的基础环境
+    FFmpeg	7.1.1	你的系统库
+    PyTorch	2.4.1	目前对 Py3.10 支持极好且稳定的版本
+    Torchvision	0.19.1	必须严格对应 PyTorch 2.4.1
+    CUDA	12.1	与 FFmpeg 7.x 搭配较好的现代驱动版本
 
 
-3. **安装 Alicia-D SDK**
+4. **安装 Alicia-D SDK**
 
     Alicia-D SDK (Software Development Kit) 是控制 Alicia-D 机械臂和读取其数据的核心软件库。
     ```
