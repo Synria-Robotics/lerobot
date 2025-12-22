@@ -27,31 +27,9 @@
 
 ---
 
-## 2. 安装 Alicia Duo SDK
 
-Alicia Duo SDK (Software Development Kit) 是控制 Alicia Duo 机械臂和读取其数据的核心软件库。
 
-1.  **获取 SDK**:
-    请从 Alicia Duo 官方渠道获取最新的 SDK 压缩包或 Git 仓库地址。假设您已将其下载并解压到名为 `Alicia_duo_sdk` 的文件夹。
-
-2.  **安装 SDK**:
-    打开您的终端 (Terminal)，进入到 SDK 所在的目录，然后使用 pip (Python 的包安装器) 进行安装。
-
-    ```bash
-    # 导航到您的 SDK 文件夹，请将 /path/to/Alicia_duo_sdk 替换为实际路径
-    cd /path/to/Alicia_duo_sdk
-
-    # 使用 pip 安装 SDK
-    # '-e .' 表示以"可编辑"模式安装，这样如果您修改了 SDK 源码，更改会立即生效
-    pip install -e .
-    ```
-
-    *   **提示**: 如果 `pip` 命令未找到，您可能需要先安装 Python 和 pip。您可以搜索 "如何安装 Python 和 pip on [您的操作系统]" 来获取指导。
-    *   如果您遇到权限问题，可能需要在命令前加上 `sudo` (例如 `sudo pip install -e .`)，但这通常不推荐，更好的做法是使用虚拟环境 (见下方 LeRobot 安装部分)。
-
----
-
-## 3. 安装 LeRobot 框架
+## 2. 安装 LeRobot 框架
 
 LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制 Alicia Duo 并收集数据。
 
@@ -63,7 +41,7 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     cd /path/to/your/projects_directory
 
     # 克隆 LeRobot 仓库
-    git clone https://github.com/Xuanya-Robotics/lerobot.git
+    git clone https://github.com/Synria-Robotics/lerobot.git -b v5.4.0 --recurse-submodules
     # 进入 LeRobot 文件夹
     cd lerobot
     ```
@@ -88,12 +66,16 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
     # 确保您在 lerobot 文件夹的根目录下
     # 安装 LeRobot 及其核心依赖
     pip install -e .
+
+    # 安装Alicia-D SDK
+    cd ALicia_duo_sdk
+    pip install -e .
     ```
     这将安装 LeRobot 框架本身以及运行它所必需的库。
 
 ---
 
-## 4. 连接 Alicia Duo 机械臂
+## 3. 连接 Alicia Duo 机械臂
 
 1.  **物理连接**:
     *   使用 USB 数据线将 Alicia Duo 机械臂连接到您的计算机。
@@ -109,7 +91,7 @@ LeRobot 是一个用于机器人学习的开源框架，我们将用它来控制
 
 ---
 
-## 5. 配置数据收集参数
+## 4. 配置数据收集参数
 
 LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键参数：
 
@@ -194,7 +176,7 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
 
 ---
 
-## 6. 开始数据收集
+## 5. 开始数据收集
 
 一切准备就绪后，打开您的终端，确保您处于已激活 LeRobot 虚拟环境的 `lerobot` 文件夹根目录下。然后运行 `control_robot.py` 脚本并附带上您配置好的参数。
 
@@ -269,14 +251,14 @@ python lerobot/scripts/control_robot.py \
 
 ---
 
-## 7. 数据集训练
+## 6. 数据集训练
 ```
     python lerobot/scripts/train.py \
     --policy.type=diffusion \
     --dataset.repo_id = path_to_dataset \
     --output_dir=path_to_training_result
 ```
-## 8. 模型验证
+## 7. 模型验证
 进入训练结果
 ```/path_to_training_result/checkpoints/last/pretrained_model/config.json```
 确保首行已添加训练类型
@@ -285,7 +267,7 @@ python lerobot/scripts/control_robot.py \
 ```
 参考`examples/dp_inference.py`修改对应参数验证训练结果
 
-## 9. 常见问题与故障排除
+## 8. 常见问题与故障排除
 
 *   **"未找到 Alicia Duo SDK" 或 "ArmController 未初始化"**:
     *   请确保您已正确安装 Alicia Duo SDK (参见步骤2)。
