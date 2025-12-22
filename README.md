@@ -156,39 +156,39 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
     在该文件中，找到 `AliciaDRobotConfig` 类。您可以修改其 `cameras` 属性来定义您的摄像头。
 
     下面是一个示例，展示了如何配置一个名为 "front" 的前置USB摄像头和一个名为 "wrist" 的腕部USB摄像头:
-    ```python
-  @RobotConfig.register_subclass("alicia_d")
-  @dataclass
-  class AliciaDConfig(RobotConfig):
-    @staticmethod
-    def default_cameras_config() -> dict[str, CameraConfig]:
-        return {
-            "wrist": OpenCVCameraConfig(
-                index_or_path="/dev/video0", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
-            ),
-            "front": OpenCVCameraConfig(
-                index_or_path="/dev/video6", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
-            ),
-            "top": OpenCVCameraConfig(
-                index_or_path="/dev/video7", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
-            ),
-        }
-    # 串口/波特率
-    port: str | None = None  # None 表示让 SDK 自行扫描
-    baudrate: int = 1_000_000
+    ```
+    @RobotConfig.register_subclass("alicia_d")
+    @dataclass
+    class AliciaDConfig(RobotConfig):
+        @staticmethod
+        def default_cameras_config() -> dict[str, CameraConfig]:
+            return {
+                "wrist": OpenCVCameraConfig(
+                    index_or_path="/dev/video0", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
+                ),
+                "front": OpenCVCameraConfig(
+                    index_or_path="/dev/video6", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
+                ),
+                "top": OpenCVCameraConfig(
+                    index_or_path="/dev/video7", fps=30, width=480, height=640, rotation=Cv2Rotation.ROTATE_90
+                ),
+            }
+        # 串口/波特率
+        port: str | None = None  # None 表示让 SDK 自行扫描
+        baudrate: int = 1_000_000
 
-    # 断开连接时的安全选项（与其它机器人保持一致语义）
-    disable_torque_on_disconnect: bool = True
+        # 断开连接时的安全选项（与其它机器人保持一致语义）
+        disable_torque_on_disconnect: bool = True
 
-    # 安全限制：每个关节相对目标的最大允许变化（弧度）。
-    # 可设为 float（统一值）或按关节名的 dict[str, float]
-    max_relative_target: float | dict[str, float] | None = None
+        # 安全限制：每个关节相对目标的最大允许变化（弧度）。
+        # 可设为 float（统一值）或按关节名的 dict[str, float]
+        max_relative_target: float | dict[str, float] | None = None
 
-    # 摄像头
-    cameras: dict[str, CameraConfig] = field(default_factory=lambda: AliciaDConfig.default_cameras_config())
+        # 摄像头
+        cameras: dict[str, CameraConfig] = field(default_factory=lambda: AliciaDConfig.default_cameras_config())
 
-    # 是否实际执行动作（False=只记录，不下发到硬件）
-    execute_motion: bool = False
+        # 是否实际执行动作（False=只记录，不下发到硬件）
+        execute_motion: bool = False
     ```
 
     *   **`cameras` 字典**: 这是一个字典，键是您为摄像头指定的名称 (例如 `"front"`, `"wrist_cam"`), 值是 `OpenCVCameraConfig` (或其他摄像头类型的配置对象)。
@@ -201,7 +201,7 @@ LeRobot 使用命令行参数来配置数据收集任务。以下是一些关键
 
 修改完 `configs.py` 文件并保存后，当您运行数据收集脚本时，LeRobot 将自动使用这些配置来连接和记录摄像头数据。命令行中不再需要添加 `--robot.cameras...` 参数。
 
----
+
 
 ## 6. 开始数据收集
 
