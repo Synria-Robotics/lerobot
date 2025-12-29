@@ -36,7 +36,7 @@ pip install -e .
 
 # Record Dataset
 
-
+Plug the type-C wire(s) to follower arm(s), connecting it(them) with the computer.
 ## For single Alicia-D follower
 
 ```
