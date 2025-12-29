@@ -33,15 +33,7 @@
 
 ## Quick Start
 
-LeRobot can be installed directly from PyPI.
-
-```bash
-pip install lerobot
-lerobot-info
-```
-
-> [!IMPORTANT]
-> For detailed installation guide, please see the [Installation Documentation](https://huggingface.co/docs/lerobot/installation).
+Please refer to the [Basic usage documentation](./docs/Alicia_D_Usage.md).
 
 ## Robots & Control
 
