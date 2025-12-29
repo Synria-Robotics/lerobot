@@ -1,13 +1,7 @@
-# Alicia-D LeRobot
-[English Version](README_EN.md) | [中文版](README.md) | [Official Taobao Store](https://g84gtpygdv6trpvdhcsy0kfr73avcip.taobao.com/shop/view_shop.htm?appUid=RAzN8HWKU5B7MfX6JjEWgkuNfftNVbnrjbjx6fPjY9KqXB46Rvy&spm=a21n57.1.hoverItem.2) | [Alicia-D Product Manual (CN)](https://docs.sparklingrobo.com/)
-<p align="center"><img src="./media/readme/Alicia_D_v5_5.jpg" width="500" /></p>
-
-
-
-
 <p align="center">
   <img alt="LeRobot, Hugging Face Robotics Library" src="./media/readme/lerobot-logo-thumbnail.png" width="100%">
 </p>
+
 <div align="center">
 
 [![Tests](https://github.com/huggingface/lerobot/actions/workflows/nightly.yml/badge.svg?branch=main)](https://github.com/huggingface/lerobot/actions/workflows/nightly.yml?query=branch%3Amain)
@@ -18,8 +12,6 @@
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.1-ff69b4.svg)](https://github.com/huggingface/lerobot/blob/main/CODE_OF_CONDUCT.md)
 
 </div>
-
-
 
 **LeRobot** aims to provide models, datasets, and tools for real-world robotics in PyTorch. The goal is to lower the barrier to entry so that everyone can contribute to and benefit from shared datasets and pretrained models.
 
@@ -64,12 +56,32 @@ action = model.select_action(obs)
 robot.send_action(action)
 ```
 
-**Supported Hardware:** Alicia-D, SO100, LeKiwi, Koch, HopeJR, OMX, EarthRover, Reachy2, Gamepads, Keyboards, Phones, OpenARM, Unitree G1.
+**Supported Hardware:** SO100, LeKiwi, Koch, HopeJR, OMX, EarthRover, Reachy2, Gamepads, Keyboards, Phones, OpenARM, Unitree G1.
 
 While these devices are natively integrated into the LeRobot codebase, the library is designed to be extensible. You can easily implement the Robot interface to utilize LeRobot's data collection, training, and visualization tools for your own custom robot.
 
 For detailed hardware setup guides, see the [Hardware Documentation](https://huggingface.co/docs/lerobot/integrate_hardware).
 
+## LeRobot Dataset
+
+To solve the data fragmentation problem in robotics, we utilize the **LeRobotDataset** format.
+
+- **Structure:** Synchronized MP4 videos (or images) for vision and Parquet files for state/action data.
+- **HF Hub Integration:** Explore thousands of robotics datasets on the [Hugging Face Hub](https://huggingface.co/lerobot).
+- **Tools:** Seamlessly delete episodes, split by indices/fractions, add/remove features, and merge multiple datasets.
+
+```python
+from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+# Load a dataset from the Hub
+dataset = LeRobotDataset("lerobot/aloha_mobile_cabinet")
+
+# Access data (automatically handles video decoding)
+episode_index=0
+print(f"{dataset[episode_index]['action'].shape=}\n")
+```
+
+Learn more about it in the [LeRobotDataset Documentation](https://huggingface.co/docs/lerobot/lerobot-dataset-v3)
 
 ## SoTA Models
 
@@ -132,3 +144,14 @@ If you use LeRobot in your research, please cite:
 }
 ```
 
+## Contribute
+
+We welcome contributions from everyone in the community! To get started, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) guide. Whether you're adding a new feature, improving documentation, or fixing a bug, your help and feedback are invaluable. We're incredibly excited about the future of open-source robotics and can't wait to work with you on what's next—thank you for your support!
+
+<p align="center">
+  <img alt="SO101 Video" src="./media/readme/so100_video.webp" width="640px">
+</p>
+
+<div align="center">
+<sub>Built by the <a href="https://huggingface.co/lerobot">LeRobot</a> team at <a href="https://huggingface.co">Hugging Face</a> with ❤️</sub>
+</div>

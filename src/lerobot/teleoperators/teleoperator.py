@@ -149,6 +149,20 @@ class Teleoperator(abc.ABC):
         """
         pass
 
+    @property
+    def directly_controls_robot(self) -> bool:
+        """
+        Whether this teleoperator directly controls the robot via hardware connection,
+        bypassing the need to send actions through the computer.
+        
+        When True, the recording loop will skip calling robot.send_action() since
+        the robot is already being controlled directly by the teleoperator hardware.
+        
+        Returns:
+            bool: True if teleoperator directly controls robot, False otherwise.
+        """
+        return False
+
     @abc.abstractmethod
     def get_action(self) -> dict[str, Any]:
         """
