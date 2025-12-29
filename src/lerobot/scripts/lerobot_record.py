@@ -173,6 +173,15 @@ class DatasetRecordConfig:
     video_encoding_batch_size: int = 1
     # Rename map for the observation to override the image and state keys
     rename_map: dict[str, str] = field(default_factory=dict)
+    # Maximum number of files per chunk directory (default: 1000)
+    # A new chunk is created when file_idx reaches chunks_size - 1
+    chunks_size: int | None = None
+    # Maximum size for data parquet files in MB (default: 100)
+    # A new file is created when current file reaches this size
+    data_files_size_in_mb: int | None = None
+    # Maximum size for video files in MB (default: 200)
+    # A new video file is created when current file reaches this size
+    video_files_size_in_mb: int | None = None
 
     def __post_init__(self):
         if self.single_task is None:
@@ -461,6 +470,9 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
                 image_writer_processes=cfg.dataset.num_image_writer_processes,
                 image_writer_threads=cfg.dataset.num_image_writer_threads_per_camera * len(robot.cameras),
                 batch_encoding_size=cfg.dataset.video_encoding_batch_size,
+                chunks_size=cfg.dataset.chunks_size,
+                data_files_size_in_mb=cfg.dataset.data_files_size_in_mb,
+                video_files_size_in_mb=cfg.dataset.video_files_size_in_mb,
             )
 
         # Load pretrained policy

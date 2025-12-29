@@ -87,18 +87,22 @@ class AliciaDFollower(Robot):
             auto_connect=False,  # Manual connection in connect() method
         )
         
-        # Joint names (6 joints + gripper)
-        self._joint_names = [f"joint{i}" for i in range(1, 7)]
-        self._gripper_name = "gripper"
+        # Joint names: 6 joints (joint1-joint6) + 1 separate gripper
+        # Note: Gripper is NOT a joint - it's a separate actuator
+        self._joint_names = [f"joint{i}" for i in range(1, 7)]  # 6 joints only
+        self._gripper_name = "gripper"  # Separate from joints
         
         # Cameras
         self.cameras = make_cameras_from_configs(config.cameras)
 
     @property
     def _motors_ft(self) -> dict[str, type]:
-        """Motor/joint features dictionary."""
-        ft = {f"{name}.pos": float for name in self._joint_names}
-        ft[f"{self._gripper_name}.pos"] = float
+        """Motor/joint features dictionary.
+        
+        Returns features for 6 joints (joint1.pos through joint6.pos) 
+        """
+        ft = {f"{name}.pos": float for name in self._joint_names}  # 6 joints
+        ft[f"{self._gripper_name}.pos"] = float  # 1 separate gripper
         return ft
 
     @property
@@ -191,13 +195,20 @@ class AliciaDFollower(Robot):
 
         # Read joint positions in degrees (record in degrees)
         start = time.perf_counter()
-        joint_angles_deg = self.robot_api.get_joints(output_format='deg')
-        gripper_value = self.robot_api.get_gripper()
+        joint_state = self.robot_api.get_robot_state()
         
-        if joint_angles_deg is None:
-            raise DeviceNotConnectedError(f"Failed to read joint angles from {self}")
-        if gripper_value is None:
-            gripper_value = 0.0  # Default if gripper read fails
+        if joint_state is None:
+            raise DeviceNotConnectedError(f"Failed to read robot state from {self}")
+        
+        # Extract joints and gripper separately (gripper is NOT a joint)
+        # Joints: 6 angles in radians
+        joint_angles_rad = joint_state.angles
+        if len(joint_angles_rad) != 6:
+            raise ValueError(f"Expected 6 joint angles, got {len(joint_angles_rad)}")
+        joint_angles_deg = [angle * 180.0 / math.pi for angle in joint_angles_rad]
+        
+        # Gripper: separate actuator, not a joint
+        gripper_value = joint_state.gripper if joint_state.gripper is not None else 0.0
         
         # Convert to observation dictionary format (in degrees for recording)
         obs_dict = {}

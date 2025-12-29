@@ -36,14 +36,14 @@ class BiAliciaDFollowerConfig(RobotConfig):
     right_arm_port: str = ""
 
     # Optional left arm settings
-    left_arm_disable_torque_on_disconnect: bool = True
+    left_arm_disable_torque_on_disconnect: bool = False
     left_arm_max_relative_target: float | dict[str, float] | None = None
     left_arm_gripper_type: str | None = None
     left_arm_debug_mode: bool = False
     left_arm_speed_deg_s: int = 20
 
     # Optional right arm settings
-    right_arm_disable_torque_on_disconnect: bool = True
+    right_arm_disable_torque_on_disconnect: bool = False
     right_arm_max_relative_target: float | dict[str, float] | None = None
     right_arm_gripper_type: str | None = None
     right_arm_debug_mode: bool = False

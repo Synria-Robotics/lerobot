@@ -1542,6 +1542,9 @@ class LeRobotDataset(torch.utils.data.Dataset):
         image_writer_threads: int = 0,
         video_backend: str | None = None,
         batch_encoding_size: int = 1,
+        chunks_size: int | None = None,
+        data_files_size_in_mb: int | None = None,
+        video_files_size_in_mb: int | None = None,
     ) -> "LeRobotDataset":
         """Create a LeRobot Dataset from scratch in order to record data."""
         obj = cls.__new__(cls)
@@ -1552,6 +1555,9 @@ class LeRobotDataset(torch.utils.data.Dataset):
             features=features,
             root=root,
             use_videos=use_videos,
+            chunks_size=chunks_size,
+            data_files_size_in_mb=data_files_size_in_mb,
+            video_files_size_in_mb=video_files_size_in_mb,
         )
         obj.repo_id = obj.meta.repo_id
         obj.root = obj.meta.root

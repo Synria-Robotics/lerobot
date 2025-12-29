@@ -24,6 +24,7 @@ Website: https://synriarobotics.ai
 """
 
 import logging
+import math
 import time
 from typing import Any
 
@@ -83,15 +84,20 @@ class AliciaDLeader(Teleoperator):
             auto_connect=False,  # Manual connection in connect() method
         )
         
-        # Joint names (6 joints + gripper)
-        self._joint_names = [f"joint{i}" for i in range(1, 7)]
-        self._gripper_name = "gripper"
+        # Joint names: 6 joints (joint1-joint6) + 1 separate gripper
+        # Note: Gripper is NOT a joint - it's a separate actuator
+        self._joint_names = [f"joint{i}" for i in range(1, 7)]  # 6 joints only
+        self._gripper_name = "gripper"  # Separate from joints
 
     @property
     def action_features(self) -> dict[str, type]:
-        """Action features dictionary - joint positions and gripper."""
-        ft = {f"{name}.pos": float for name in self._joint_names}
-        ft[f"{self._gripper_name}.pos"] = float
+        """Action features dictionary.
+        
+        Returns features for 6 joints (joint1.pos through joint6.pos) 
+        plus 1 separate gripper (gripper.pos).
+        """
+        ft = {f"{name}.pos": float for name in self._joint_names}  # 6 joints
+        ft[f"{self._gripper_name}.pos"] = float  # 1 separate gripper
         return ft
 
     @property
@@ -165,17 +171,23 @@ class AliciaDLeader(Teleoperator):
 
         start = time.perf_counter()
         
-        # Read joint positions from leader arm in degrees (record in degrees)
-        joint_angles_deg = self.robot_api.get_joints(output_format='deg')
-        gripper_value = self.robot_api.get_gripper()
-        
-        if joint_angles_deg is None:
-            raise DeviceNotConnectedError(f"Failed to read joint angles from {self}")
-        if gripper_value is None:
-            gripper_value = 0.0  # Default if gripper read fails
-        
-        # Read button status (leader arms have button status)
+        # Get robot state once to avoid duplicate API calls
         state = self.robot_api.get_robot_state()
+        
+        if state is None:
+            raise DeviceNotConnectedError(f"Failed to read robot state from {self}")
+        
+        # Extract joints and gripper separately (gripper is NOT a joint)
+        # Joints: 6 angles in radians
+        joint_angles_rad = state.angles
+        if len(joint_angles_rad) != 6:
+            raise ValueError(f"Expected 6 joint angles, got {len(joint_angles_rad)}")
+        joint_angles_deg = [angle * 180.0 / math.pi for angle in joint_angles_rad]
+        
+        # Gripper: separate actuator, not a joint
+        gripper_value = state.gripper if state.gripper is not None else 0.0
+        
+        # Button status: leader arms have button status
         button_status = state.run_status_text if state else "idle"
         
         # Format as action dictionary (in degrees for recording)

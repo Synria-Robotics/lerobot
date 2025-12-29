@@ -35,7 +35,7 @@ class AliciaDFollowerConfig(RobotConfig):
     # Port to connect to the arm
     port: str = ""
 
-    disable_torque_on_disconnect: bool = True
+    disable_torque_on_disconnect: bool = False
 
     # `max_relative_target` limits the magnitude of the relative positional target vector for safety purposes.
     # Set this to a positive scalar to have the same value for all motors, or a dictionary that maps motor

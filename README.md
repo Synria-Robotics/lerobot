@@ -1,5 +1,5 @@
 # Alicia-D LeRobot
-[English Version](README_EN.md) | [中文版](README.md) | [Official Taobao Store](https://g84gtpygdv6trpvdhcsy0kfr73avcip.taobao.com/shop/view_shop.htm?appUid=RAzN8HWKU5B7MfX6JjEWgkuNfftNVbnrjbjx6fPjY9KqXB46Rvy&spm=a21n57.1.hoverItem.2) | [Alicia-D Product Manual (CN)](https://docs.sparklingrobo.com/)
+[English Version](README.md) | [中文版](README_CN.md) | [Official Taobao Store](https://g84gtpygdv6trpvdhcsy0kfr73avcip.taobao.com/shop/view_shop.htm?appUid=RAzN8HWKU5B7MfX6JjEWgkuNfftNVbnrjbjx6fPjY9KqXB46Rvy&spm=a21n57.1.hoverItem.2) | [Alicia-D Product Manual (CN)](https://docs.sparklingrobo.com/)
 <p align="center"><img src="./media/readme/Alicia_D_v5_5.jpg" width="500" /></p>
 
 
@@ -33,8 +33,7 @@
 
 ## Quick Start
 
-Please refer to the [Basic usage documentation](./docs/Alicia_D_Usage.md).
-
+Please refer to the [Basic usage documentation](./docs/Alicia_D_Usage.md) 
 ## Robots & Control
 
 <div align="center">
@@ -121,6 +120,19 @@ If you use LeRobot in your research, please cite:
     title = {LeRobot: State-of-the-art Machine Learning for Real-World Robotics in Pytorch},
     howpublished = "\url{https://github.com/huggingface/lerobot}",
     year = {2024}
+}
+```
+
+If you use the Alicia-D LeRobot integration in your research, please also cite:
+
+```bibtex
+@software{synria2025aliciadlerobot,
+    title = {Alicia-D LeRobot Integration: Robot Learning Framework for Alicia-D Robotic Arms},
+    author = {Synria Robotics Team},
+    year = {2025},
+    publisher = {Synria Robotics Co., Ltd.},
+    url = {https://github.com/Synria-Robotics/lerobot},
+    version = {6.1.0-beta1}
 }
 ```
 
