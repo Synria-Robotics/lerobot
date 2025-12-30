@@ -195,12 +195,12 @@ lerobot-train \
     --dataset.root=/home/ubuntu/Data/LerobotData/test2 \
     --dataset.video_backend=pyav \
     --policy.type=act \
+    --policy.push_to_hub=false \
     --output_dir=outputs/train/act_bimanual_grab_cube \
     --job_name=act_bimanual_grab_cube \
     --policy.device=cuda \
     --wandb.enable=true \
     --wandb.project=alicia-d-bimanual \
-    --policy.repo_id=ubuntu/act_bimanual_policy \
     --steps=50000 \
     --batch_size=32 \
     --save_freq=5000 \
@@ -218,12 +218,12 @@ lerobot-train \
     --dataset.root=/home/ubuntu/Data/LerobotData/test2 \
     --dataset.video_backend=pyav \
     --policy.type=diffusion \
+    --policy.push_to_hub=false \
     --output_dir=outputs/train/dp_bimanual_grab_cube \
     --job_name=dp_bimanual_grab_cube \
     --policy.device=cuda \
     --wandb.enable=true \
     --wandb.project=alicia-d-bimanual \
-    --policy.repo_id=ubuntu/dp_bimanual_policy \
     --steps=50000 \
     --batch_size=32 \
     --save_freq=5000 \
@@ -240,6 +240,7 @@ lerobot-train \
 | `--dataset.video_backend` | 视频解码器：`pyav` 或 `torchcodec` | 自动检测 |
 | `--policy.type` | 策略类型：`act`、`diffusion` 等 | 必需 |
 | `--policy.device` | 设备：`cuda` 或 `cpu` | `cpu` |
+| `--policy.push_to_hub` | 训练完成后将模型推送到 Hugging Face Hub | `true` |
 | `--steps` | 训练步数 | 50000 |
 | `--batch_size` | 批次大小 | 32 |
 | `--save_freq` | 检查点保存频率 | 5000 |
@@ -254,6 +255,20 @@ lerobot-train \
 - **`torchcodec`**：速度更快，但需要特定版本的 FFmpeg 库
 
 如果遇到 FFmpeg 库错误，请使用 `--dataset.video_backend=pyav`。
+
+### 禁用模型上传到 Hub
+
+默认情况下，LeRobot 会在训练完成后尝试将训练好的模型推送到 Hugging Face Hub。如果您不想上传模型（例如，仅进行本地训练），请设置：
+
+```bash
+--policy.push_to_hub=false
+```
+
+**注意：** 如果 `push_to_hub=true`（默认值），您必须：
+- 配置 Hugging Face 身份验证（`huggingface-cli login`）
+- 或者设置 `--policy.push_to_hub=false` 以避免身份验证错误
+
+无论此设置如何，模型都会保存在 `output_dir` 目录中。
 
 ---
 
@@ -318,6 +333,20 @@ lerobot-train \
 **解决方案：**
 - 确保机器人配置与原始录制匹配
 - 检查 FPS、特征和机器人类型是否匹配
+
+#### 5. Hugging Face Hub 身份验证错误
+
+**错误：** `401 Client Error: Unauthorized for url: https://huggingface.co/api/repos/create`
+
+**解决方案：** 禁用模型上传到 Hub：
+```bash
+--policy.push_to_hub=false
+```
+
+或者，使用 Hugging Face 进行身份验证：
+```bash
+huggingface-cli login
+```
 
 ### 获取帮助
 

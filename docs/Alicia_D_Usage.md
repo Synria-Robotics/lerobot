@@ -195,12 +195,12 @@ lerobot-train \
     --dataset.root=/home/ubuntu/Data/LerobotData/test2 \
     --dataset.video_backend=pyav \
     --policy.type=act \
+    --policy.push_to_hub=false \
     --output_dir=outputs/train/act_bimanual_grab_cube \
     --job_name=act_bimanual_grab_cube \
     --policy.device=cuda \
     --wandb.enable=true \
     --wandb.project=alicia-d-bimanual \
-    --policy.repo_id=ubuntu/act_bimanual_policy \
     --steps=50000 \
     --batch_size=32 \
     --save_freq=5000 \
@@ -218,12 +218,12 @@ lerobot-train \
     --dataset.root=/home/ubuntu/Data/LerobotData/test2 \
     --dataset.video_backend=pyav \
     --policy.type=diffusion \
+    --policy.push_to_hub=false \
     --output_dir=outputs/train/dp_bimanual_grab_cube \
     --job_name=dp_bimanual_grab_cube \
     --policy.device=cuda \
     --wandb.enable=true \
     --wandb.project=alicia-d-bimanual \
-    --policy.repo_id=ubuntu/dp_bimanual_policy \
     --steps=50000 \
     --batch_size=32 \
     --save_freq=5000 \
@@ -240,6 +240,7 @@ lerobot-train \
 | `--dataset.video_backend` | Video decoder: `pyav` or `torchcodec` | Auto-detect |
 | `--policy.type` | Policy type: `act`, `diffusion`, etc. | Required |
 | `--policy.device` | Device: `cuda` or `cpu` | `cpu` |
+| `--policy.push_to_hub` | Push model to Hugging Face Hub after training | `true` |
 | `--steps` | Number of training steps | 50000 |
 | `--batch_size` | Batch size | 32 |
 | `--save_freq` | Checkpoint save frequency | 5000 |
@@ -254,6 +255,20 @@ The `--dataset.video_backend` parameter selects the video decoder:
 - **`torchcodec`**: Faster but requires specific FFmpeg library versions
 
 If you encounter FFmpeg library errors, use `--dataset.video_backend=pyav`.
+
+### Disabling Model Upload to Hub
+
+By default, LeRobot attempts to push trained models to the Hugging Face Hub after training completes. If you don't want to upload models (e.g., for local-only training), set:
+
+```bash
+--policy.push_to_hub=false
+```
+
+**Note:** If `push_to_hub=true` (default), you must either:
+- Have Hugging Face authentication configured (`huggingface-cli login`)
+- Or set `--policy.push_to_hub=false` to avoid authentication errors
+
+Models are always saved locally in the `output_dir` directory regardless of this setting.
 
 ---
 
@@ -318,6 +333,20 @@ This allows you to discard bad episodes and re-record them without affecting the
 **Solution:**
 - Ensure robot configuration matches original recording
 - Check FPS, features, and robot type match
+
+#### 5. Hugging Face Hub Authentication Error
+
+**Error:** `401 Client Error: Unauthorized for url: https://huggingface.co/api/repos/create`
+
+**Solution:** Disable model upload to Hub:
+```bash
+--policy.push_to_hub=false
+```
+
+Alternatively, authenticate with Hugging Face:
+```bash
+huggingface-cli login
+```
 
 ### Getting Help
 
