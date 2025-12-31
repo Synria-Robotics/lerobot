@@ -8,6 +8,7 @@
 - [硬件设置](#硬件设置)
 - [数据集录制](#数据集录制)
 - [策略训练](#策略训练)
+- [策略评估](#策略评估)
 - [键盘快捷键](#键盘快捷键)
 - [故障排除](#故障排除)
 
@@ -139,8 +140,8 @@ lerobot-record \
 ```bash
 lerobot-record \
     --robot.type=bi_alicia_d_follower \
-    --robot.left_arm_port=/dev/ttyACM0 \
-    --robot.right_arm_port=/dev/ttyACM1 \
+    --robot.left_port=/dev/ttyACM0 \
+    --robot.right_port=/dev/ttyACM1 \
     --robot.cameras='{
         camera1: {type: opencv, index_or_path: /dev/video10, width: 640, height: 480, fps: 30},
         camera2: {type: opencv, index_or_path: /dev/video18, width: 640, height: 480, fps: 30},
@@ -163,10 +164,10 @@ lerobot-record \
 ```
 
 **关键参数：**
-- `--robot.left_arm_port` / `--robot.right_arm_port`: 操作臂的串口
-- `--teleop.directly_controls_robot`: 控制模式（默认：`true`）。设置为 `false` 启用计算机中介控制（需要 `--teleop.left_arm_port` 和 `--teleop.right_arm_port`）
+- `--robot.left_port` / `--robot.right_port`: 操作臂的串口
+- `--teleop.directly_controls_robot`: 控制模式（默认：`true`）。设置为 `false` 启用计算机中介控制（需要 `--teleop.left_port` 和 `--teleop.right_port`）
 
-**计算机中介控制：** 在上面的命令中添加 `--teleop.directly_controls_robot=false --teleop.left_arm_port=/dev/ttyACM2 --teleop.right_arm_port=/dev/ttyACM3`
+**计算机中介控制：** 在上面的命令中添加 `--teleop.directly_controls_robot=false --teleop.left_port=/dev/ttyACM2 --teleop.right_port=/dev/ttyACM3`
 
 ### 恢复录制
 
@@ -310,6 +311,132 @@ lerobot-train \
 
 ---
 
+## 策略评估
+
+### 概述
+
+训练策略后，您可以使用评估脚本在真实机械臂上评估它。评估脚本加载训练好的策略检查点并在机械臂上运行，可选择将评估回合录制到数据集中。
+
+### 单臂评估
+
+**命令：**
+
+```bash
+python examples/alicia/eval_alicia_arms.py \
+    --policy.path=outputs/train/act_grab_cube/checkpoints/last/pretrained_model \
+    --robot.type=alicia_d_follower \
+    --robot.port=/dev/ttyACM1 \
+    --robot.cameras="{front: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}}" \
+    --policy.device=cuda \
+    --task="Grab the cube" \
+    --duration=120 \
+    --fps=10 \
+    --num_episodes=5 \
+    --record_eval=false
+```
+
+**关键参数：**
+- `--policy.path`: 训练好的策略检查点目录路径（例如：`outputs/train/act_grab_cube/checkpoints/last/pretrained_model` 或 `outputs/train/act_grab_cube/checkpoints/050000/pretrained_model`）
+- `--robot.port`: 操作臂的串口
+- `--task`: 任务描述（应与训练时使用的任务匹配）
+- `--duration`: 每个评估回合的持续时间（秒）
+- `--fps`: 动作执行频率（Hz）
+- `--num_episodes`: 要运行的评估回合数
+- `--record_eval`: 是否将评估回合录制到数据集（`true` 或 `false`）
+- `--eval_dataset_repo_id`: 用于录制评估回合的数据集仓库 ID（如果 `record_eval=true` 则需要）
+
+### 双臂评估
+
+**命令：**
+
+```bash
+python examples/alicia/eval_alicia_arms.py \
+    --policy.path=outputs/train/act_bimanual_grab_cube/checkpoints/last/pretrained_model \
+    --robot.type=bi_alicia_d_follower \
+    --robot.left_arm_port=/dev/ttyACM1 \
+    --robot.right_arm_port=/dev/ttyACM0 \
+    --robot.cameras='{
+        right_wrist: {type: opencv, index_or_path: /dev/video10, width: 640, height: 480, fps: 30},
+        left_wrist: {type: opencv, index_or_path: /dev/video18, width: 640, height: 480, fps: 30},
+        top: {type: opencv, index_or_path: /dev/video24, width: 640, height: 480, fps: 30},
+        front: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}
+    }' \
+    --policy.device=cuda \
+    --task="Grab and handover the red cube to the other arm" \
+    --duration=120 \
+    --fps=10 \
+    --num_episodes=5 \
+    --record_eval=false
+```
+
+**关键参数：**
+- `--robot.left_arm_port` / `--robot.right_arm_port`: 操作臂的串口
+- `--robot.cameras`: 摄像头配置（应与训练设置匹配）
+
+### 录制评估回合
+
+要将评估回合录制以供后续分析：
+
+```bash
+python examples/alicia/eval_alicia_arms.py \
+    --policy.path=outputs/train/act_bimanual_grab_cube/checkpoints/last/pretrained_model \
+    --robot.type=bi_alicia_d_follower \
+    --robot.left_arm_port=/dev/ttyACM1 \
+    --robot.right_arm_port=/dev/ttyACM0 \
+    --robot.cameras='{
+        right_wrist: {type: opencv, index_or_path: /dev/video10, width: 640, height: 480, fps: 30},
+        left_wrist: {type: opencv, index_or_path: /dev/video18, width: 640, height: 480, fps: 30},
+        top: {type: opencv, index_or_path: /dev/video24, width: 640, height: 480, fps: 30},
+        front: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}
+    }' \
+    --policy.device=cuda \
+    --task="Grab and handover the red cube to the other arm" \
+    --duration=120 \
+    --fps=10 \
+    --num_episodes=5 \
+    --record_eval=true \
+    --eval_dataset_repo_id=ubuntu/eval_bimanual_grab_cube
+```
+
+**注意：** 当 `record_eval=true` 时，评估回合将保存到指定的数据集仓库，并可推送到 Hugging Face Hub 进行分析。
+
+### 评估参数
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--policy.path` | 训练好的策略检查点目录路径 | 必需 |
+| `--robot.type` | 机械臂类型：`alicia_d_follower` 或 `bi_alicia_d_follower` | 必需 |
+| `--robot.port` | 串口（单臂） | 必需 |
+| `--robot.left_arm_port` / `--robot.right_arm_port` | 串口（双臂） | 必需 |
+| `--robot.cameras` | 摄像头配置 | 必需 |
+| `--policy.device` | 设备：`cuda` 或 `cpu` | `cpu` |
+| `--task` | 任务描述（应与训练匹配） | `""` |
+| `--duration` | 每回合持续时间（秒） | `120.0` |
+| `--fps` | 动作执行频率（Hz） | `10.0` |
+| `--num_episodes` | 评估回合数 | `5` |
+| `--record_eval` | 将评估回合录制到数据集 | `false` |
+| `--eval_dataset_repo_id` | 用于录制的数据集仓库 ID | `"temp/eval_not_saved"` |
+| `--display_data` | 在 rerun 中显示观测/动作 | `true` |
+
+### 策略检查点路径
+
+`--policy.path` 参数接受：
+- **本地检查点目录**：`outputs/train/act_bimanual_grab_cube/checkpoints/last/pretrained_model`（指向最新检查点的符号链接）
+- **特定检查点**：`outputs/train/act_bimanual_grab_cube/checkpoints/050000/pretrained_model`（特定检查点编号）
+- **Hugging Face Hub 模型**：`username/model_name`（如果模型已推送到 hub）
+
+**注意：** 使用 `last` 自动使用最新检查点，或指定检查点编号（例如 `050000`）以使用特定检查点。
+
+### 评估技巧
+
+1. **匹配训练配置**：确保机械臂配置（端口、摄像头）与训练设置匹配
+2. **任务描述**：使用与训练时相同的任务描述以获得最佳结果
+3. **FPS 一致性**：使用与训练相同的 FPS（ACT 策略通常为 10 Hz）
+4. **可视化**：设置 `--display_data=true` 以在 rerun 中可视化策略行为
+5. **录制**：设置 `--record_eval=true` 以保存评估回合以供分析
+
+---
+
 ## 键盘快捷键
 
 在数据集录制期间，可使用以下键盘快捷键：
@@ -408,7 +535,7 @@ huggingface-cli login
 
 **解决方案：**
 - **硬件线连接（默认）：** 使用 `--teleop.directly_controls_robot=true`（或省略）
-- **未物理连接：** 使用 `--teleop.directly_controls_robot=false` 并指定 `--teleop.port`（单臂）或 `--teleop.left_arm_port`/`--teleop.right_arm_port`（双臂）
+- **未物理连接：** 使用 `--teleop.directly_controls_robot=false` 并指定 `--teleop.port`（单臂）或 `--teleop.left_port`/`--teleop.right_port`（双臂）
 
 ### 获取帮助
 

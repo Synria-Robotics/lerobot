@@ -8,6 +8,7 @@ This guide provides comprehensive instructions for using Alicia-D robotic arms w
 - [Hardware Setup](#hardware-setup)
 - [Dataset Recording](#dataset-recording)
 - [Policy Training](#policy-training)
+- [Policy Evaluation](#policy-evaluation)
 - [Keyboard Shortcuts](#keyboard-shortcuts)
 - [Troubleshooting](#troubleshooting)
 
@@ -306,6 +307,132 @@ By default, LeRobot attempts to push trained models to the Hugging Face Hub afte
 - Or set `--policy.push_to_hub=false` to avoid authentication errors
 
 Models are always saved locally in the `output_dir` directory regardless of this setting.
+
+---
+
+## Policy Evaluation
+
+### Overview
+
+After training a policy, you can evaluate it on the real robot using the evaluation script. The evaluation script loads a trained policy checkpoint and runs it on the robot, optionally recording evaluation episodes to a dataset.
+
+### Single Arm Evaluation
+
+**Command:**
+
+```bash
+python examples/alicia/eval_alicia_arms.py \
+    --policy.path=outputs/train/act_grab_cube/checkpoints/last/pretrained_model \
+    --robot.type=alicia_d_follower \
+    --robot.port=/dev/ttyACM1 \
+    --robot.cameras="{front: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}}" \
+    --policy.device=cuda \
+    --task="Grab the cube" \
+    --duration=120 \
+    --fps=10 \
+    --num_episodes=5 \
+    --record_eval=false
+```
+
+**Key Parameters:**
+- `--policy.path`: Path to the trained policy checkpoint directory (e.g., `outputs/train/act_grab_cube/checkpoints/last/pretrained_model` or `outputs/train/act_grab_cube/checkpoints/050000/pretrained_model`)
+- `--robot.port`: Serial port of the follower arm
+- `--task`: Task description (should match the task used during training)
+- `--duration`: Duration of each evaluation episode in seconds
+- `--fps`: Action execution frequency (Hz)
+- `--num_episodes`: Number of evaluation episodes to run
+- `--record_eval`: Whether to record evaluation episodes to a dataset (`true` or `false`)
+- `--eval_dataset_repo_id`: Dataset repository ID for recording evaluation episodes (required if `record_eval=true`)
+
+### Dual Arm (Bimanual) Evaluation
+
+**Command:**
+
+```bash
+python examples/alicia/eval_alicia_arms.py \
+    --policy.path=outputs/train/act_bimanual_grab_cube/checkpoints/last/pretrained_model \
+    --robot.type=bi_alicia_d_follower \
+    --robot.left_arm_port=/dev/ttyACM1 \
+    --robot.right_arm_port=/dev/ttyACM0 \
+    --robot.cameras='{
+        right_wrist: {type: opencv, index_or_path: /dev/video10, width: 640, height: 480, fps: 30},
+        left_wrist: {type: opencv, index_or_path: /dev/video18, width: 640, height: 480, fps: 30},
+        top: {type: opencv, index_or_path: /dev/video24, width: 640, height: 480, fps: 30},
+        front: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}
+    }' \
+    --policy.device=cuda \
+    --task="Grab and handover the red cube to the other arm" \
+    --duration=120 \
+    --fps=10 \
+    --num_episodes=5 \
+    --record_eval=false
+```
+
+**Key Parameters:**
+- `--robot.left_arm_port` / `--robot.right_arm_port`: Serial ports for follower arms
+- `--robot.cameras`: Camera configuration (should match training setup)
+
+### Recording Evaluation Episodes
+
+To record evaluation episodes for later analysis:
+
+```bash
+python examples/alicia/eval_alicia_arms.py \
+    --policy.path=outputs/train/act_bimanual_grab_cube/checkpoints/last/pretrained_model \
+    --robot.type=bi_alicia_d_follower \
+    --robot.left_arm_port=/dev/ttyACM1 \
+    --robot.right_arm_port=/dev/ttyACM0 \
+    --robot.cameras='{
+        right_wrist: {type: opencv, index_or_path: /dev/video10, width: 640, height: 480, fps: 30},
+        left_wrist: {type: opencv, index_or_path: /dev/video18, width: 640, height: 480, fps: 30},
+        top: {type: opencv, index_or_path: /dev/video24, width: 640, height: 480, fps: 30},
+        front: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}
+    }' \
+    --policy.device=cuda \
+    --task="Grab and handover the red cube to the other arm" \
+    --duration=120 \
+    --fps=10 \
+    --num_episodes=5 \
+    --record_eval=true \
+    --eval_dataset_repo_id=ubuntu/eval_bimanual_grab_cube
+```
+
+**Note:** When `record_eval=true`, the evaluation episodes are saved to the specified dataset repository and can be pushed to the Hugging Face Hub for analysis.
+
+### Evaluation Parameters
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `--policy.path` | Path to trained policy checkpoint directory | Required |
+| `--robot.type` | Robot type: `alicia_d_follower` or `bi_alicia_d_follower` | Required |
+| `--robot.port` | Serial port (single arm) | Required |
+| `--robot.left_arm_port` / `--robot.right_arm_port` | Serial ports (bimanual) | Required |
+| `--robot.cameras` | Camera configuration | Required |
+| `--policy.device` | Device: `cuda` or `cpu` | `cpu` |
+| `--task` | Task description (should match training) | `""` |
+| `--duration` | Duration per episode (seconds) | `120.0` |
+| `--fps` | Action execution frequency (Hz) | `10.0` |
+| `--num_episodes` | Number of evaluation episodes | `5` |
+| `--record_eval` | Record evaluation episodes to dataset | `false` |
+| `--eval_dataset_repo_id` | Dataset repo ID for recording | `"temp/eval_not_saved"` |
+| `--display_data` | Display observations/actions in rerun | `true` |
+
+### Policy Checkpoint Paths
+
+The `--policy.path` parameter accepts:
+- **Local checkpoint directory**: `outputs/train/act_bimanual_grab_cube/checkpoints/last/pretrained_model` (symlink to latest checkpoint)
+- **Specific checkpoint**: `outputs/train/act_bimanual_grab_cube/checkpoints/050000/pretrained_model` (specific checkpoint number)
+- **Hugging Face Hub model**: `username/model_name` (if model was pushed to hub)
+
+**Note:** Use `last` to automatically use the latest checkpoint, or specify a checkpoint number (e.g., `050000`) to use a specific checkpoint.
+
+### Tips for Evaluation
+
+1. **Match Training Configuration**: Ensure robot configuration (ports, cameras) matches the training setup
+2. **Task Description**: Use the same task description as during training for best results
+3. **FPS Consistency**: Use the same FPS as training (typically 10 Hz for ACT policies)
+4. **Visualization**: Set `--display_data=true` to visualize policy behavior in rerun
+5. **Recording**: Set `--record_eval=true` to save evaluation episodes for analysis
 
 ---
 
