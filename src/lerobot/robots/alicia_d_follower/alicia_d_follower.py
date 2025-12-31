@@ -195,7 +195,7 @@ class AliciaDFollower(Robot):
 
         # Read joint positions in degrees (record in degrees)
         start = time.perf_counter()
-        joint_state = self.robot_api.get_robot_state()
+        joint_state = self.robot_api.get_robot_state("joint_gripper")
         
         if joint_state is None:
             raise DeviceNotConnectedError(f"Failed to read robot state from {self}")
@@ -256,8 +256,10 @@ class AliciaDFollower(Robot):
         # /!\ Slower fps expected due to reading from the follower.
         if self.config.max_relative_target is not None:
             # Read joints in degrees for safety comparison (both goal and present in degrees)
-            present_joints_deg = self.robot_api.get_joints(output_format='deg')
-            if present_joints_deg is not None:
+            present_joints_rad = self.robot_api.get_robot_state("joint")
+            if present_joints_rad is not None:
+                # Convert from radians to degrees
+                present_joints_deg = [angle * 180.0 / math.pi for angle in present_joints_rad]
                 # Convert goal_pos dict to goal_present_pos format for safety clipping (in degrees)
                 goal_present_pos = {}
                 for i, joint_name in enumerate(self._joint_names):
@@ -284,7 +286,7 @@ class AliciaDFollower(Robot):
                 goal_joints_deg.append(0.0)
 
         # Send command to robot (using degrees format)
-        success = self.robot_api.set_robot_target(
+        success = self.robot_api.set_robot_state(
             target_joints=goal_joints_deg,
             gripper_value=gripper_value,
             joint_format='deg',

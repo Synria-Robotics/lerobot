@@ -41,4 +41,9 @@ class BiAliciaDLeaderConfig(TeleoperatorConfig):
     # Debug mode for SDK
     left_arm_debug_mode: bool = False
     right_arm_debug_mode: bool = False
+    
+    # Whether the leader arms directly control the follower arms via hardware wire.
+    # If True, actions don't need to be sent through the computer (default: True).
+    # If False, actions will be sent through the computer from teleoperator to robot.
+    directly_controls_robot: bool = True
 

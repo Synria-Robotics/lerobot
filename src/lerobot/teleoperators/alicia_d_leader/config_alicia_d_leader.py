@@ -38,4 +38,9 @@ class AliciaDLeaderConfig(TeleoperatorConfig):
     
     # Debug mode for SDK
     debug_mode: bool = False
+    
+    # Whether the leader arm directly controls the follower arm via hardware wire.
+    # If True, actions don't need to be sent through the computer (default: True).
+    # If False, actions will be sent through the computer from teleoperator to robot.
+    directly_controls_robot: bool = True
 

@@ -108,10 +108,12 @@ class AliciaDLeader(Teleoperator):
     @property
     def directly_controls_robot(self) -> bool:
         """
-        Alicia-D leader arms directly control follower arms via control wire,
-        so actions don't need to be sent through the computer.
+        Whether the leader arm directly controls the follower arm via hardware wire.
+        
+        Returns the value from configuration. If True, actions don't need to be sent
+        through the computer. If False, actions will be sent through the computer.
         """
-        return True
+        return self.config.directly_controls_robot
 
     @property
     def is_connected(self) -> bool:
@@ -172,7 +174,7 @@ class AliciaDLeader(Teleoperator):
         start = time.perf_counter()
         
         # Get robot state once to avoid duplicate API calls
-        state = self.robot_api.get_robot_state()
+        state = self.robot_api.get_robot_state("joint_gripper")
         
         if state is None:
             raise DeviceNotConnectedError(f"Failed to read robot state from {self}")

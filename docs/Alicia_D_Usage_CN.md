@@ -65,9 +65,9 @@ lerobot-train --help
 
 ### 连接要求
 
-1. **从动臂（Follower Arm）**：使用 Type-C USB 线将从动臂连接到计算机
-2. **主动臂（Leader Arm）**：主动臂通过硬件控制线直接连接到从动臂（无需连接计算机）
-3. **摄像头**：将 USB 摄像头连接到计算机
+1. **操作臂（Follower Arm）**：使用 Type-C USB 线将操作臂连接到计算机
+2. **示教臂（Leader Arm）**：示教臂通过硬件控制线直接连接到操作臂（无需连接计算机）
+3. **摄像头**：将摄像头连接到计算机
 
 ### 端口检测
 
@@ -87,10 +87,19 @@ lerobot-find-port
 
 ### 概述
 
-Alicia-D 主动臂通过硬件控制线直接控制从动臂，绕过计算机。录制过程中，系统：
-- 从从动臂读取关节位置（反映主动臂的命令）
-- 捕获摄像头图像
-- 基于从动臂观测记录动作（因为主动臂直接控制从动臂）
+Alicia-D 示教臂可以通过两种模式控制操作臂：
+
+1. **直接硬件控制（默认）**：示教臂通过硬件控制线直接控制操作臂，绕过计算机。录制过程中，系统：
+   - 从操作臂读取关节位置（反映示教臂的命令）
+   - 捕获摄像头图像
+   - 基于操作臂观测记录动作（因为示教臂直接控制操作臂）
+
+2. **计算机中介控制**：动作通过计算机从遥操作器发送到机械臂。此模式在以下情况下有用：
+   - 示教臂和操作臂未通过硬件线物理连接
+   - 您想在发送到机械臂之前对动作进行处理/过滤
+   - 测试或调试场景
+
+控制模式由 `--teleop.directly_controls_robot` 参数控制（默认：`true`）。
 
 ### 单臂配置
 
@@ -99,13 +108,13 @@ Alicia-D 主动臂通过硬件控制线直接控制从动臂，绕过计算机�
 ```bash
 lerobot-record \
     --robot.type=alicia_d_follower \
-    --robot.port=/dev/ttyACM1 \
-    --robot.cameras="{laptop: {type: opencv, index_or_path: /dev/video4, width: 640, height: 480, fps: 30}}" \
+    --robot.port=/dev/ttyACM0 \
+    --robot.cameras="{laptop: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}}" \
     --robot.id=black \
     --teleop.type=alicia_d_leader \
     --teleop.id=leader_arm \
     --dataset.repo_id=ubuntu/grab-cube-dataset \
-    --dataset.root=/home/ubuntu/Data/LerobotData \
+    --dataset.root=/home/ubuntu/Data/LerobotData/test \
     --dataset.num_episodes=10 \
     --dataset.single_task="Grab the cube" \
     --dataset.episode_time_s=60 \
@@ -114,16 +123,16 @@ lerobot-record \
     --dataset.push_to_hub=false
 ```
 
-**参数说明：**
-- `--robot.port`: 从动臂的串口（使用 `lerobot-find-port` 检测）
-- `--robot.cameras`: 摄像头配置字典
-- `--dataset.repo_id`: 数据集仓库标识符（格式：`用户名/数据集名称`）
-- `--dataset.root`: 保存数据集的本地目录（可选，默认为缓存目录）
-- `--dataset.num_episodes`: 要录制的回合数
-- `--dataset.episode_time_s`: 每个回合的持续时间（秒）
-- `--dataset.reset_time_s`: 回合之间的环境重置时间
 
-### 双臂（双手）配置
+**关键参数：**
+- `--robot.port`: 操作臂的串口（使用 `lerobot-find-port` 检测）
+- `--teleop.directly_controls_robot`: 控制模式（默认：`true`）。设置为 `false` 启用计算机中介控制（需要 `--teleop.port`）
+- `--dataset.repo_id`: 数据集仓库标识符（格式：`用户名/数据集名称`）
+- `--dataset.num_episodes`: 要录制的回合数
+
+**计算机中介控制：** 在上面的命令中添加 `--teleop.directly_controls_robot=false --teleop.port=/dev/ttyACM1`
+
+### 双臂配置
 
 **命令：**
 
@@ -153,12 +162,11 @@ lerobot-record \
     --dataset.push_to_hub=false
 ```
 
-**额外参数：**
-- `--robot.left_arm_port`: 左从动臂的串口
-- `--robot.right_arm_port`: 右从动臂的串口
-- `--dataset.chunks_size`: 每个分块目录的最大文件数（默认：1000）
-- `--dataset.data_files_size_in_mb`: 数据 parquet 文件的最大大小（MB，默认：100）
-- `--dataset.video_files_size_in_mb`: 视频文件的最大大小（MB，默认：200）
+**关键参数：**
+- `--robot.left_arm_port` / `--robot.right_arm_port`: 操作臂的串口
+- `--teleop.directly_controls_robot`: 控制模式（默认：`true`）。设置为 `false` 启用计算机中介控制（需要 `--teleop.left_arm_port` 和 `--teleop.right_arm_port`）
+
+**计算机中介控制：** 在上面的命令中添加 `--teleop.directly_controls_robot=false --teleop.left_arm_port=/dev/ttyACM2 --teleop.right_arm_port=/dev/ttyACM3`
 
 ### 恢复录制
 
@@ -175,7 +183,7 @@ lerobot-record \
 - 从最后一个回合继续
 - 保持数据集兼容性
 
-**注意：** 确保您的机器人配置与原始录制设置匹配。
+**注意：** 确保您的机械臂配置与原始录制设置匹配。
 
 ---
 
@@ -202,11 +210,39 @@ lerobot-train \
     --wandb.enable=true \
     --wandb.project=alicia-d-bimanual \
     --steps=50000 \
-    --batch_size=32 \
+    --batch_size=8 \
     --save_freq=5000 \
     --log_freq=100 \
     --eval_freq=5000
 ```
+
+**注意：** 如果遇到 CUDA 内存不足错误，请减小 `--batch_size`（尝试 4、8 或 16）。对于带有多个摄像头的双手设置，通常需要较小的批次大小。
+
+### 恢复训练
+
+要从检查点恢复训练，添加 `--config_path` 参数指向检查点目录（或 `train_config.json` 文件）：
+
+```bash
+lerobot-train \
+    --config_path=/home/ubuntu/Alicia/lerobot/outputs/train/act_bimanual_grab_cube/checkpoints/050000 \
+    --dataset.repo_id=ubuntu/bimanual-grab-cube-dataset \
+    --dataset.root=/home/ubuntu/Data/LerobotData/test2 \
+    --dataset.video_backend=pyav \
+    --policy.type=act \
+    --policy.push_to_hub=false \
+    --output_dir=outputs/train/act_bimanual_grab_cube \
+    --job_name=act_bimanual_grab_cube \
+    --policy.device=cuda \
+    --wandb.enable=true \
+    --wandb.project=alicia-d-bimanual \
+    --steps=100000 \
+    --batch_size=8 \
+    --save_freq=5000 \
+    --log_freq=100 \
+    --eval_freq=5000
+```
+
+**注意：** 使用绝对路径作为 `--config_path`。恢复时可以更改训练参数（例如 `--steps`）。
 
 ### Diffusion Policy 策略训练
 
@@ -225,11 +261,13 @@ lerobot-train \
     --wandb.enable=true \
     --wandb.project=alicia-d-bimanual \
     --steps=50000 \
-    --batch_size=32 \
+    --batch_size=8 \
     --save_freq=5000 \
     --log_freq=100 \
     --eval_freq=5000
 ```
+
+**注意：** Diffusion Policy 通常比 ACT 需要更多内存。从 `--batch_size=4` 或 `--batch_size=8` 开始，如果内存允许再增加。要恢复训练，添加 `--config_path` 参数，如上面的 ACT 示例所示。
 
 ### 训练参数
 
@@ -242,7 +280,7 @@ lerobot-train \
 | `--policy.device` | 设备：`cuda` 或 `cpu` | `cpu` |
 | `--policy.push_to_hub` | 训练完成后将模型推送到 Hugging Face Hub | `true` |
 | `--steps` | 训练步数 | 50000 |
-| `--batch_size` | 批次大小 | 32 |
+| `--batch_size` | 批次大小（如果 CUDA 内存不足则减小：尝试 4、8 或 16） | 32 |
 | `--save_freq` | 检查点保存频率 | 5000 |
 | `--log_freq` | 日志记录频率 | 100 |
 | `--eval_freq` | 评估频率（0 表示禁用） | 5000 |
@@ -331,8 +369,8 @@ lerobot-train \
 **错误：** `ValueError: Dataset metadata compatibility check failed`
 
 **解决方案：**
-- 确保机器人配置与原始录制匹配
-- 检查 FPS、特征和机器人类型是否匹配
+- 确保机械臂配置与原始录制匹配
+- 检查 FPS、特征和机械臂类型是否匹配
 
 #### 5. Hugging Face Hub 身份验证错误
 
@@ -347,6 +385,30 @@ lerobot-train \
 ```bash
 huggingface-cli login
 ```
+
+#### 6. CUDA 内存不足错误
+
+**错误：** `torch.OutOfMemoryError: CUDA out of memory`
+
+**解决方案：** 减小批次大小：
+```bash
+--batch_size=8  # 或尝试 4 或 16
+```
+
+**其他内存优化技巧：**
+- 对于带有多个摄像头的双手设置，从 `--batch_size=4` 或 `--batch_size=8` 开始
+- 清除 GPU 缓存：`torch.cuda.empty_cache()`（如果修改代码）
+- 在数据集录制时降低图像分辨率（例如，320x240 而不是 640x480）
+- 使用梯度累积以在较小批次下保持有效批次大小
+- 关闭其他占用 GPU 的应用程序
+
+#### 7. 遥操作器连接问题
+
+**错误：** `DeviceNotConnectedError` 或动作未发送到机械臂
+
+**解决方案：**
+- **硬件线连接（默认）：** 使用 `--teleop.directly_controls_robot=true`（或省略）
+- **未物理连接：** 使用 `--teleop.directly_controls_robot=false` 并指定 `--teleop.port`（单臂）或 `--teleop.left_arm_port`/`--teleop.right_arm_port`（双臂）
 
 ### 获取帮助
 

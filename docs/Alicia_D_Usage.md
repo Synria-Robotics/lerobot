@@ -67,7 +67,7 @@ lerobot-train --help
 
 1. **Follower Arm(s)**: Connect the Type-C USB cable from the follower arm(s) to your computer
 2. **Leader Arm(s)**: Leader arms are connected to follower arms via hardware control wire (no computer connection needed)
-3. **Cameras**: Connect USB cameras to your computer
+3. **Cameras**: Connect cameras to your computer
 
 ### Port Detection
 
@@ -87,10 +87,19 @@ Common port locations:
 
 ### Overview
 
-Alicia-D leader arms directly control follower arms via hardware control wire, bypassing the computer. During recording, the system:
-- Reads joint positions from the follower arm (which reflects leader commands)
-- Captures camera images
-- Records actions based on follower observations (since leader directly controls follower)
+Alicia-D leader arms can control follower arms in two modes:
+
+1. **Direct Hardware Control (Default)**: Leader arms directly control follower arms via hardware control wire, bypassing the computer. During recording, the system:
+   - Reads joint positions from the follower arm (which reflects leader commands)
+   - Captures camera images
+   - Records actions based on follower observations (since leader directly controls follower)
+
+2. **Computer-Mediated Control**: Actions are sent through the computer from teleoperator to robot. This mode is useful when:
+   - Leader and follower are not physically connected via hardware wire
+   - You want to add processing/filtering of actions before sending to robot
+   - Testing or debugging scenarios
+
+The control mode is controlled by the `--teleop.directly_controls_robot` parameter (default: `true`).
 
 ### Single Arm Configuration
 
@@ -114,14 +123,13 @@ lerobot-record \
     --dataset.push_to_hub=false
 ```
 
-**Parameters:**
+**Key Parameters:**
 - `--robot.port`: Serial port of the follower arm (use `lerobot-find-port` to detect)
-- `--robot.cameras`: Camera configuration dictionary
+- `--teleop.directly_controls_robot`: Control mode (default: `true`). Set to `false` for computer-mediated control (requires `--teleop.port`)
 - `--dataset.repo_id`: Dataset repository identifier (format: `username/dataset-name`)
-- `--dataset.root`: Local directory to save dataset (optional, defaults to cache)
 - `--dataset.num_episodes`: Number of episodes to record
-- `--dataset.episode_time_s`: Duration of each episode in seconds
-- `--dataset.reset_time_s`: Time for environment reset between episodes
+
+**Computer-Mediated Control:** Add `--teleop.directly_controls_robot=false --teleop.port=/dev/ttyACM0` to the command above.
 
 ### Dual Arm (Bimanual) Configuration
 
@@ -153,12 +161,11 @@ lerobot-record \
     --dataset.push_to_hub=false
 ```
 
-**Additional Parameters:**
-- `--robot.left_arm_port`: Serial port for left follower arm
-- `--robot.right_arm_port`: Serial port for right follower arm
-- `--dataset.chunks_size`: Maximum number of files per chunk directory (default: 1000)
-- `--dataset.data_files_size_in_mb`: Maximum size for data parquet files in MB (default: 100)
-- `--dataset.video_files_size_in_mb`: Maximum size for video files in MB (default: 200)
+**Key Parameters:**
+- `--robot.left_arm_port` / `--robot.right_arm_port`: Serial ports for follower arms
+- `--teleop.directly_controls_robot`: Control mode (default: `true`). Set to `false` for computer-mediated control (requires `--teleop.left_arm_port` and `--teleop.right_arm_port`)
+
+**Computer-Mediated Control:** Add `--teleop.directly_controls_robot=false --teleop.left_arm_port=/dev/ttyACM2 --teleop.right_arm_port=/dev/ttyACM3` to the command above.
 
 ### Resuming Recording
 
@@ -202,11 +209,39 @@ lerobot-train \
     --wandb.enable=true \
     --wandb.project=alicia-d-bimanual \
     --steps=50000 \
-    --batch_size=32 \
+    --batch_size=8 \
     --save_freq=5000 \
     --log_freq=100 \
     --eval_freq=5000
 ```
+
+**Note:** If you encounter CUDA out of memory errors, reduce `--batch_size` (try 4, 8, or 16). For bimanual setups with multiple cameras, smaller batch sizes are often necessary.
+
+### Resuming Training
+
+To resume from a checkpoint, add `--config_path` pointing to the checkpoint directory (or `train_config.json` file):
+
+```bash
+lerobot-train \
+    --config_path=/home/ubuntu/Alicia/lerobot/outputs/train/act_bimanual_grab_cube/checkpoints/050000 \
+    --dataset.repo_id=ubuntu/bimanual-grab-cube-dataset \
+    --dataset.root=/home/ubuntu/Data/LerobotData/test2 \
+    --dataset.video_backend=pyav \
+    --policy.type=act \
+    --policy.push_to_hub=false \
+    --output_dir=outputs/train/act_bimanual_grab_cube \
+    --job_name=act_bimanual_grab_cube \
+    --policy.device=cuda \
+    --wandb.enable=true \
+    --wandb.project=alicia-d-bimanual \
+    --steps=100000 \
+    --batch_size=8 \
+    --save_freq=5000 \
+    --log_freq=100 \
+    --eval_freq=5000
+```
+
+**Note:** Use absolute paths for `--config_path`. You can change training parameters (e.g., `--steps`) when resuming.
 
 ### Diffusion Policy Training
 
@@ -225,11 +260,13 @@ lerobot-train \
     --wandb.enable=true \
     --wandb.project=alicia-d-bimanual \
     --steps=50000 \
-    --batch_size=32 \
+    --batch_size=8 \
     --save_freq=5000 \
     --log_freq=100 \
     --eval_freq=5000
 ```
+
+**Note:** Diffusion Policy typically requires more memory than ACT. Start with `--batch_size=4` or `--batch_size=8` and increase if memory allows. To resume, add `--config_path` as shown in the ACT example above.
 
 ### Training Parameters
 
@@ -242,7 +279,7 @@ lerobot-train \
 | `--policy.device` | Device: `cuda` or `cpu` | `cpu` |
 | `--policy.push_to_hub` | Push model to Hugging Face Hub after training | `true` |
 | `--steps` | Number of training steps | 50000 |
-| `--batch_size` | Batch size | 32 |
+| `--batch_size` | Batch size (reduce if CUDA OOM: try 4, 8, or 16) | 32 |
 | `--save_freq` | Checkpoint save frequency | 5000 |
 | `--log_freq` | Logging frequency | 100 |
 | `--eval_freq` | Evaluation frequency (0 to disable) | 5000 |
@@ -347,6 +384,30 @@ Alternatively, authenticate with Hugging Face:
 ```bash
 huggingface-cli login
 ```
+
+#### 6. CUDA Out of Memory Error
+
+**Error:** `torch.OutOfMemoryError: CUDA out of memory`
+
+**Solution:** Reduce batch size:
+```bash
+--batch_size=8  # or try 4 or 16
+```
+
+**Additional memory optimization tips:**
+- For bimanual setups with multiple cameras, start with `--batch_size=4` or `--batch_size=8`
+- Clear GPU cache: `torch.cuda.empty_cache()` (if modifying code)
+- Reduce image resolution in dataset recording (e.g., 320x240 instead of 640x480)
+- Use gradient accumulation to maintain effective batch size with smaller batches
+- Close other GPU-intensive applications
+
+#### 7. Teleoperator Connection Issues
+
+**Error:** `DeviceNotConnectedError` or actions not being sent to robot
+
+**Solution:** 
+- **Hardware wire connected (default):** Use `--teleop.directly_controls_robot=true` (or omit)
+- **Not physically connected:** Use `--teleop.directly_controls_robot=false` and specify `--teleop.port` (single arm) or `--teleop.left_arm_port`/`--teleop.right_arm_port` (bimanual)
 
 ### Getting Help
 

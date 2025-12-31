@@ -95,10 +95,12 @@ class BiAliciaDLeader(Teleoperator):
     @property
     def directly_controls_robot(self) -> bool:
         """
-        Bimanual Alicia-D leader arms directly control follower arms via control wire,
-        so actions don't need to be sent through the computer.
+        Whether the leader arms directly control the follower arms via hardware wire.
+        
+        Returns the value from configuration. If True, actions don't need to be sent
+        through the computer. If False, actions will be sent through the computer.
         """
-        return True
+        return self.config.directly_controls_robot
 
     @property
     def is_connected(self) -> bool:
