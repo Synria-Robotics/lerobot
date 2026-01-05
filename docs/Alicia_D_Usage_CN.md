@@ -295,6 +295,123 @@ lerobot-train \
 
 如果遇到 FFmpeg 库错误，请使用 `--dataset.video_backend=pyav`。
 
+### Hugging Face Hub 配置
+
+要将数据集或模型推送到 Hugging Face Hub，您需要先进行身份验证。
+
+#### 步骤 1：安装 Hugging Face CLI（如果尚未安装）
+
+```bash
+pip install huggingface_hub
+```
+
+#### 步骤 2：创建 Hugging Face 账户（如需要）
+
+如果您还没有 Hugging Face 账户：
+
+1. 访问 https://huggingface.co/join
+2. 使用您的电子邮件或 GitHub 账户注册
+3. **选择账户类型：**
+   - **个人账户**（默认）：免费层级，适合个人项目和研究
+   - **课堂组织**：适用于教育机构和课堂（免费，需要验证）
+   - **非营利组织**：适用于注册的非营利组织（免费，需要验证）
+
+**对于大多数用户：** 个人账户已足够，并提供以下免费访问：
+- 无限公共仓库（数据集和模型）
+- 私有仓库（免费层级数量有限）
+- LeRobot 所需的所有基本 Hub 功能
+
+**用于教育用途：** 如果您是学校/大学的一部分，考虑创建课堂组织以：
+- 为学生提供集中工作空间
+- 协作数据集和模型
+- 教育资源和演示
+
+**对于非营利组织：** 如果您是注册的非营利组织，可以申请非营利状态以：
+- 增强的协作功能
+- 优先支持
+- 额外资源
+
+#### 步骤 3：登录 Hugging Face Hub
+
+```bash
+hf auth login
+```
+
+这将提示您：
+1. 输入您的 Hugging Face 令牌（从 https://huggingface.co/settings/tokens 获取）
+2. 选择是否将令牌保存到 git 凭据
+
+**获取 Hugging Face 令牌：**
+1. 访问 https://huggingface.co/settings/tokens
+2. 点击 "New token"
+3. **选择令牌类型：**
+   - **Read/Write 令牌**（推荐）：简单且对大多数用户足够。提供对您仓库的完整读写访问权限。
+   - **细粒度令牌**（高级）：更安全，具有细粒度权限。如果您需要限制对特定仓库或资源的访问，请使用此选项。
+4. 复制令牌
+5. 在 `hf auth login` 提示时粘贴
+
+**推荐：** 对于 LeRobot 使用（推送数据集和模型），推荐使用 **Read/Write 令牌**，因为它更简单并提供所有必要的权限。仅在出于安全目的需要特定访问限制时使用细粒度令牌。
+
+#### 步骤 4：验证身份验证
+
+```bash
+hf whoami
+```
+
+如果身份验证成功，这应该显示您的 Hugging Face 用户名。
+
+#### 替代方案：使用环境变量
+
+除了 `hf auth login`，您可以将令牌设置为环境变量：
+
+```bash
+export HF_TOKEN="your_token_here"
+```
+
+或将其添加到 `~/.bashrc` 或 `~/.zshrc`：
+
+```bash
+echo 'export HF_TOKEN="your_token_here"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 推送数据集到 Hub
+
+使用 `--dataset.push_to_hub=true` 录制数据集时：
+
+```bash
+lerobot-record \
+    --robot.type=bi_alicia_d_follower \
+    --robot.left_arm_port=/dev/ttyACM1 \
+    --robot.right_arm_port=/dev/ttyACM0 \
+    --robot.cameras='{
+        right_wrist: {type: opencv, index_or_path: /dev/video10, width: 640, height: 480, fps: 30},
+        left_wrist: {type: opencv, index_or_path: /dev/video18, width: 640, height: 480, fps: 30},
+        top: {type: opencv, index_or_path: /dev/video24, width: 640, height: 480, fps: 30},
+        front: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}
+    }' \
+    --robot.id=bimanual_follower \
+    --teleop.type=bi_alicia_d_leader \
+    --teleop.id=bimanual_leader \
+    --dataset.repo_id=ubuntu/bimanual-grab-cube-dataset \
+    --dataset.root=/home/ubuntu/Data/LerobotData/cloth1 \
+    --dataset.num_episodes=10 \
+    --dataset.single_task="Grab the cloth with both arms" \
+    --dataset.episode_time_s=48 \
+    --dataset.reset_time_s=5 \
+    --display_data=true \
+    --dataset.push_to_hub=true \
+    --dataset.private=false
+```
+
+**关键参数：**
+- `--dataset.repo_id`: 仓库 ID，格式为 `用户名/数据集名称`（例如：`ubuntu/bimanual-grab-cube-dataset`）
+- `--dataset.push_to_hub`: 设置为 `true` 以在录制完成后推送
+- `--dataset.private`: 设置为 `true` 用于私有仓库，`false` 用于公共仓库（默认：`false`）
+- `--dataset.tags`: 数据集的可选标签列表（例如：`--dataset.tags="['robotics', 'bimanual', 'manipulation']"`）
+
+**注意：** 数据集首先保存在本地，然后在录制完成后推送到 Hub。
+
 ### 禁用模型上传到 Hub
 
 默认情况下，LeRobot 会在训练完成后尝试将训练好的模型推送到 Hugging Face Hub。如果您不想上传模型（例如，仅进行本地训练），请设置：
@@ -304,7 +421,7 @@ lerobot-train \
 ```
 
 **注意：** 如果 `push_to_hub=true`（默认值），您必须：
-- 配置 Hugging Face 身份验证（`huggingface-cli login`）
+- 配置 Hugging Face 身份验证（`hf auth login`）
 - 或者设置 `--policy.push_to_hub=false` 以避免身份验证错误
 
 无论此设置如何，模型都会保存在 `output_dir` 目录中。
@@ -503,14 +620,26 @@ python examples/alicia/eval_alicia_arms.py \
 
 **错误：** `401 Client Error: Unauthorized for url: https://huggingface.co/api/repos/create`
 
-**解决方案：** 禁用模型上传到 Hub：
+**解决方案：** 使用 Hugging Face Hub 进行身份验证：
 ```bash
---policy.push_to_hub=false
+# 如果尚未安装，请安装 huggingface_hub
+pip install huggingface_hub
+
+# 登录 Hugging Face Hub
+hf auth login
 ```
 
-或者，使用 Hugging Face 进行身份验证：
+在提示时输入您的 Hugging Face 令牌（从 https://huggingface.co/settings/tokens 获取）。
+
+**替代方案：** 将令牌设置为环境变量：
 ```bash
-huggingface-cli login
+export HF_TOKEN="your_token_here"
+```
+
+**要禁用上传：**
+```bash
+--dataset.push_to_hub=false  # 对于数据集
+--policy.push_to_hub=false   # 对于模型
 ```
 
 #### 6. CUDA 内存不足错误

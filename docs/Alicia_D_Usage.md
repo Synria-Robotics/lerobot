@@ -294,6 +294,123 @@ The `--dataset.video_backend` parameter selects the video decoder:
 
 If you encounter FFmpeg library errors, use `--dataset.video_backend=pyav`.
 
+### Hugging Face Hub Configuration
+
+To push datasets or models to the Hugging Face Hub, you need to authenticate first.
+
+#### Step 1: Install Hugging Face CLI (if not already installed)
+
+```bash
+pip install huggingface_hub
+```
+
+#### Step 2: Create Hugging Face Account (if needed)
+
+If you don't have a Hugging Face account yet:
+
+1. Go to https://huggingface.co/join
+2. Sign up with your email or GitHub account
+3. **Choose account type:**
+   - **Personal Account** (default): Free tier, suitable for individual projects and research
+   - **Classroom Organization**: For educational institutions and classrooms (free, requires verification)
+   - **Non-profit Organization**: For registered non-profit organizations (free, requires verification)
+
+**For most users:** A personal account is sufficient and provides free access to:
+- Unlimited public repositories (datasets and models)
+- Private repositories (limited number on free tier)
+- All basic Hub features needed for LeRobot
+
+**For educational use:** If you're part of a school/university, consider creating a Classroom organization for:
+- Centralized workspace for students
+- Collaborative datasets and models
+- Educational resources and demos
+
+**For non-profit organizations:** If you're a registered non-profit, you can apply for non-profit status for:
+- Enhanced collaboration features
+- Priority support
+- Additional resources
+
+#### Step 3: Login to Hugging Face Hub
+
+```bash
+hf auth login
+```
+
+This will prompt you to:
+1. Enter your Hugging Face token (get it from https://huggingface.co/settings/tokens)
+2. Choose whether to save the token to your git credentials
+
+**Getting a Hugging Face Token:**
+1. Go to https://huggingface.co/settings/tokens
+2. Click "New token"
+3. **Select token type:**
+   - **Read/Write token** (Recommended): Simple and sufficient for most users. Provides full read and write access to your repositories.
+   - **Fine-grained token** (Advanced): More secure with granular permissions. Use if you need to restrict access to specific repositories or resources.
+4. Copy the token
+5. Paste it when prompted by `hf auth login`
+
+**Recommendation:** For LeRobot usage (pushing datasets and models), a **Read/Write token** is recommended as it's simpler and provides all necessary permissions. Use fine-grained tokens only if you need specific access restrictions for security purposes.
+
+#### Step 4: Verify Authentication
+
+```bash
+hf whoami
+```
+
+This should display your Hugging Face username if authentication is successful.
+
+#### Alternative: Using Environment Variable
+
+Instead of `hf auth login`, you can set the token as an environment variable:
+
+```bash
+export HF_TOKEN="your_token_here"
+```
+
+Or add it to your `~/.bashrc` or `~/.zshrc`:
+
+```bash
+echo 'export HF_TOKEN="your_token_here"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Pushing Datasets to Hub
+
+When recording datasets with `--dataset.push_to_hub=true`:
+
+```bash
+lerobot-record \
+    --robot.type=bi_alicia_d_follower \
+    --robot.left_arm_port=/dev/ttyACM1 \
+    --robot.right_arm_port=/dev/ttyACM0 \
+    --robot.cameras='{
+        right_wrist: {type: opencv, index_or_path: /dev/video10, width: 640, height: 480, fps: 30},
+        left_wrist: {type: opencv, index_or_path: /dev/video18, width: 640, height: 480, fps: 30},
+        top: {type: opencv, index_or_path: /dev/video24, width: 640, height: 480, fps: 30},
+        front: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}
+    }' \
+    --robot.id=bimanual_follower \
+    --teleop.type=bi_alicia_d_leader \
+    --teleop.id=bimanual_leader \
+    --dataset.repo_id=ubuntu/bimanual-grab-cube-dataset \
+    --dataset.root=/home/ubuntu/Data/LerobotData/cloth1 \
+    --dataset.num_episodes=10 \
+    --dataset.single_task="Grab the cloth with both arms" \
+    --dataset.episode_time_s=48 \
+    --dataset.reset_time_s=5 \
+    --display_data=true \
+    --dataset.push_to_hub=true \
+    --dataset.private=false
+```
+
+**Key Parameters:**
+- `--dataset.repo_id`: Repository ID in format `username/dataset-name` (e.g., `ubuntu/bimanual-grab-cube-dataset`)
+- `--dataset.push_to_hub`: Set to `true` to push after recording completes
+- `--dataset.private`: Set to `true` for private repositories, `false` for public (default: `false`)
+- `--dataset.tags`: Optional list of tags for the dataset (e.g., `--dataset.tags="['robotics', 'bimanual', 'manipulation']"`)
+
+**Note:** The dataset is always saved locally first, then pushed to the Hub after recording completes.
+
 ### Disabling Model Upload to Hub
 
 By default, LeRobot attempts to push trained models to the Hugging Face Hub after training completes. If you don't want to upload models (e.g., for local-only training), set:
@@ -303,7 +420,7 @@ By default, LeRobot attempts to push trained models to the Hugging Face Hub afte
 ```
 
 **Note:** If `push_to_hub=true` (default), you must either:
-- Have Hugging Face authentication configured (`huggingface-cli login`)
+- Have Hugging Face authentication configured (`hf auth login`)
 - Or set `--policy.push_to_hub=false` to avoid authentication errors
 
 Models are always saved locally in the `output_dir` directory regardless of this setting.
@@ -502,14 +619,26 @@ This allows you to discard bad episodes and re-record them without affecting the
 
 **Error:** `401 Client Error: Unauthorized for url: https://huggingface.co/api/repos/create`
 
-**Solution:** Disable model upload to Hub:
+**Solution:** Authenticate with Hugging Face Hub:
 ```bash
---policy.push_to_hub=false
+# Install huggingface_hub if not already installed
+pip install huggingface_hub
+
+# Login to Hugging Face Hub
+hf auth login
 ```
 
-Alternatively, authenticate with Hugging Face:
+Enter your Hugging Face token when prompted (get it from https://huggingface.co/settings/tokens).
+
+**Alternative:** Set token as environment variable:
 ```bash
-huggingface-cli login
+export HF_TOKEN="your_token_here"
+```
+
+**To disable uploads instead:**
+```bash
+--dataset.push_to_hub=false  # For datasets
+--policy.push_to_hub=false   # For models
 ```
 
 #### 6. CUDA Out of Memory Error

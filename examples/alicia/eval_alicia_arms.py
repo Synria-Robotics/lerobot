@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-"""Evaluate a trained ACT policy on bimanual Alicia-D robot arms.
+"""Evaluate a trained policy (ACT, Diffusion, etc.) on bimanual Alicia-D robot arms.
 
 This script loads a trained policy and runs it on the bimanual robot for evaluation.
 Optionally records evaluation episodes to a dataset.
 
-Example usage:
+Supports all policy types: ACT, Diffusion, TDMPC, VQBeT, etc.
 
+Example usage for ACT:
 ```shell
 python examples/alicia/eval_alicia_arms.py \
     --policy.path=outputs/train/act_bimanual_grab_cube/checkpoints/last/pretrained_model \
@@ -19,7 +20,27 @@ python examples/alicia/eval_alicia_arms.py \
         front: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}
     }' \
     --policy.device=cuda \
-    --task="f" \
+    --task="Grab the cloth with both arms" \
+    --record_eval=false \
+    --duration=120 \
+    --fps=10
+```
+
+Example usage for Diffusion:
+```shell
+CUDA_VISIBLE_DEVICES=1 python examples/alicia/eval_alicia_arms.py \
+    --policy.path=outputs/train/diffusion_bimanual_fold_cloth/checkpoints/last/pretrained_model \
+    --robot.type=bi_alicia_d_follower \
+    --robot.left_arm_port=/dev/ttyACM1 \
+    --robot.right_arm_port=/dev/ttyACM0 \
+    --robot.cameras='{
+        right_wrist: {type: opencv, index_or_path: /dev/video10, width: 640, height: 480, fps: 30},
+        left_wrist: {type: opencv, index_or_path: /dev/video18, width: 640, height: 480, fps: 30},
+        top: {type: opencv, index_or_path: /dev/video24, width: 640, height: 480, fps: 30},
+        front: {type: opencv, index_or_path: /dev/video12, width: 640, height: 480, fps: 30}
+    }' \
+    --policy.device=cuda \
+    --task="Grab the cloth with both arms" \
     --record_eval=false \
     --duration=120 \
     --fps=10
@@ -39,8 +60,7 @@ from lerobot.configs import parser
 from lerobot.configs.policies import PreTrainedConfig
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.datasets.utils import hw_to_dataset_features
-from lerobot.policies.act.modeling_act import ACTPolicy
-from lerobot.policies.factory import make_pre_post_processors
+from lerobot.policies.factory import make_policy, make_pre_post_processors
 from lerobot.processor import make_default_processors
 from lerobot.robots import (  # noqa: F401
     RobotConfig,
@@ -175,23 +195,26 @@ def eval_policy(cfg: EvalConfig):
     robot.connect()
     logger.info("Robot connected")
 
-    # Load policy directly (following reference examples)
+    # Load policy using factory function (supports all policy types: ACT, Diffusion, etc.)
     logger.info(f"Loading policy from {cfg.policy.pretrained_path}")
-    policy = ACTPolicy.from_pretrained(cfg.policy.pretrained_path)
-    policy = policy.to(cfg.policy.device)
+    policy = make_policy(
+        cfg=cfg.policy,
+        ds_meta=dataset.meta,
+        rename_map=cfg.rename_map if hasattr(cfg, 'rename_map') else None,
+    )
     policy.eval()
-    logger.info("Policy loaded and set to eval mode")
+    logger.info(f"Policy loaded and set to eval mode (type: {cfg.policy.type})")
 
     # Create processors
     teleop_action_processor, robot_action_processor, robot_observation_processor = make_default_processors()
 
     # Build Policy Processors (following reference examples)
     preprocessor, postprocessor = make_pre_post_processors(
-        policy_cfg=policy,
+        policy_cfg=cfg.policy,
         pretrained_path=cfg.policy.pretrained_path,
         dataset_stats=dataset.meta.stats,
         # The inference device is automatically set to match the detected hardware
-        preprocessor_overrides={"device_processor": {"device": str(policy.config.device)}},
+        preprocessor_overrides={"device_processor": {"device": str(cfg.policy.device)}},
     )
     logger.info("Processors loaded")
 

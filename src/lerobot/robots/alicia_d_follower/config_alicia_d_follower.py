@@ -52,5 +52,5 @@ class AliciaDFollowerConfig(RobotConfig):
     debug_mode: bool = False
 
     # Speed in degrees per second for motion commands
-    speed_deg_s: int = 20
+    speed_deg_s: int = 100
 
