@@ -35,12 +35,6 @@ conda activate lerobot
 # Create workspace directory
 mkdir -p alicia_lerobot
 cd alicia_lerobot
-
-# Clone and install Alicia-D SDK
-git clone https://github.com/Synria-Robotics/Alicia-D-SDK.git -b v6.1.0
-cd Alicia-D-SDK
-pip install -e .
-cd ..
 ```
 
 ### Step 3: Install LeRobot
