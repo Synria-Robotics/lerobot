@@ -41,7 +41,7 @@ cd alicia_lerobot
 
 ```bash
 # Clone and install LeRobot
-git clone https://github.com/Synria-Robotics/lerobot.git -b v6.1.0-beta1
+git clone https://github.com/Synria-Robotics/lerobot.git -b v6.1.0
 cd lerobot
 pip install -e .
 ```

@@ -42,7 +42,7 @@ cd alicia_lerobot
 
 ```bash
 # 克隆并安装 LeRobot
-git clone https://github.com/Synria-Robotics/lerobot.git -b v6.1.0-beta1
+git clone https://github.com/Synria-Robotics/lerobot.git -b v6.1.0
 cd lerobot
 pip install -e .
 ```
@@ -211,6 +211,10 @@ lerobot-train \
     --log_freq=100 \
     --eval_freq=5000
 ```
+
+
+
+
 
 **注意：** 如果遇到 CUDA 内存不足错误，请减小 `--batch_size`（尝试 4、8 或 16）。对于带有多个摄像头的双手设置，通常需要较小的批次大小。
 
