@@ -44,3 +44,12 @@ class AliciaDLeaderConfig(TeleoperatorConfig):
     # If False, actions will be sent through the computer from teleoperator to robot.
     directly_controls_robot: bool = True
 
+    # When directly controlling the follower via hardware, choose whether the
+    # leader state should overwrite robot joint observations during recording.
+    # True: teleop-only joint observations (case 1).
+    # False: robot observations + teleop actions (case 2).
+    use_action_as_observation: bool = True
+
+    # Delay (in frames) between observation (leader state) and action (leader command).
+    # A value of 1 means observation is the previous frame's leader state.
+    action_observation_delay_frames: int = 1

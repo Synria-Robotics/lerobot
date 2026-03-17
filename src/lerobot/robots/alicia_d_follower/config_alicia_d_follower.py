@@ -54,3 +54,10 @@ class AliciaDFollowerConfig(RobotConfig):
     # Speed in degrees per second for motion commands
     speed_deg_s: int = 100
 
+    # Allow teleop state to overwrite joint observations when the leader is
+    # directly wired to the follower.
+    use_teleop_state_for_observation: bool = True
+
+    # Whether to connect to the follower arm over serial.
+    # If None, connect only when `port` is set.
+    connect_arm: bool | None = None

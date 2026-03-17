@@ -60,6 +60,7 @@ lerobot-record \
 
 import logging
 import time
+from collections import deque
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from pprint import pformat
@@ -252,6 +253,15 @@ class RecordConfig:
 """
 
 
+def _override_obs_with_action(obs: dict[str, Any], action: dict[str, Any]) -> dict[str, Any]:
+    """Overwrite joint observations with teleop actions while keeping camera data intact."""
+    updated = dict(obs)
+    for key, value in action.items():
+        if key.endswith(".pos") and key in updated:
+            updated[key] = value
+    return updated
+
+
 @safe_stop_image_writer
 def record_loop(
     robot: Robot,
@@ -309,6 +319,15 @@ def record_loop(
         preprocessor.reset()
         postprocessor.reset()
 
+    use_teleop_obs = False
+    teleop_obs_buffer: deque[dict[str, Any]] | None = None
+    if isinstance(teleop, Teleoperator):
+        use_teleop_obs = teleop.directly_controls_robot and teleop.uses_action_as_observation
+        use_teleop_obs = use_teleop_obs and getattr(robot, "uses_teleop_state_for_observation", False)
+        if use_teleop_obs:
+            delay_frames = max(0, int(teleop.action_observation_delay_frames))
+            teleop_obs_buffer = deque(maxlen=delay_frames + 1)
+
     timestamp = 0
     start_episode_t = time.perf_counter()
     while timestamp < control_time_s:
@@ -320,6 +339,21 @@ def record_loop(
 
         # Get robot observation
         obs = robot.get_observation()
+
+        teleop_action: dict[str, Any] | None = None
+        if policy is None and isinstance(teleop, Teleoperator):
+            # If teleoperator directly controls robot and is not connected,
+            # use robot's current observation as action (since they're directly connected via hardware)
+            if teleop.directly_controls_robot and not teleop.is_connected:
+                # Extract joint positions from robot observation as actions
+                # (leader directly controls follower, so follower's state reflects leader's command)
+                teleop_action = {key: val for key, val in obs.items() if key.endswith(".pos")}
+            else:
+                teleop_action = teleop.get_action()
+
+            if use_teleop_obs and teleop_action is not None and teleop_obs_buffer is not None:
+                teleop_obs_buffer.append(teleop_action)
+                obs = _override_obs_with_action(obs, teleop_obs_buffer[0])
 
         # Applies a pipeline to the raw robot observation, default is IdentityProcessor
         obs_processed = robot_observation_processor(obs)
@@ -343,15 +377,7 @@ def record_loop(
             act_processed_policy: RobotAction = make_robot_action(action_values, dataset.features)
 
         elif policy is None and isinstance(teleop, Teleoperator):
-            # If teleoperator directly controls robot and is not connected,
-            # use robot's current observation as action (since they're directly connected via hardware)
-            if teleop.directly_controls_robot and not teleop.is_connected:
-                # Extract joint positions from robot observation as actions
-                # (leader directly controls follower, so follower's state reflects leader's command)
-                act = {key: val for key, val in obs.items() if key.endswith(".pos")}
-            else:
-                act = teleop.get_action()
-
+            act = teleop_action if teleop_action is not None else teleop.get_action()
             # Applies a pipeline to the raw teleop action, default is IdentityProcessor
             act_processed_teleop = teleop_action_processor((act, obs))
 
@@ -491,15 +517,9 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
             )
 
         robot.connect()
-        # Only connect to teleoperator if it doesn't directly control the robot
-        # For Alicia-D: leader directly controls follower via hardware, so we don't need to connect
         if teleop is not None:
-            if isinstance(teleop, Teleoperator) and teleop.directly_controls_robot:
-                logging.info(
-                    f"{teleop} directly controls {robot} via hardware. "
-                    "Skipping teleoperator connection to save resources. "
-                    "Using robot observations as actions."
-                )
+            if isinstance(teleop, Teleoperator):
+                teleop.connect()
             elif isinstance(teleop, list):
                 # Check if any teleoperator in the list directly controls the robot
                 if any(isinstance(t, Teleoperator) and t.directly_controls_robot for t in teleop):
@@ -511,8 +531,6 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
                     for t in teleop:
                         if isinstance(t, Teleoperator):
                             t.connect()
-            else:
-                teleop.connect()
 
         listener, events = init_keyboard_listener()
 

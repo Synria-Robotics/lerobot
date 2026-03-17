@@ -36,6 +36,7 @@ class BiAliciaDFollowerConfig(RobotConfig):
     right_arm_port: str = ""
 
     # Optional left arm settings
+    left_arm_connect: bool | None = None
     left_arm_disable_torque_on_disconnect: bool = False
     left_arm_max_relative_target: float | dict[str, float] | None = None
     left_arm_gripper_type: str | None = None
@@ -43,6 +44,7 @@ class BiAliciaDFollowerConfig(RobotConfig):
     left_arm_speed_deg_s: int = 20
 
     # Optional right arm settings
+    right_arm_connect: bool | None = None
     right_arm_disable_torque_on_disconnect: bool = False
     right_arm_max_relative_target: float | dict[str, float] | None = None
     right_arm_gripper_type: str | None = None
@@ -52,3 +54,6 @@ class BiAliciaDFollowerConfig(RobotConfig):
     # cameras (shared between both arms)
     cameras: dict[str, CameraConfig] = field(default_factory=dict)
 
+    # Allow teleop state to overwrite joint observations when the leader is
+    # directly wired to the follower.
+    use_teleop_state_for_observation: bool = True

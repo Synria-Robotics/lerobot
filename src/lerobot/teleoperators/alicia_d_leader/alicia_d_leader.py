@@ -116,6 +116,16 @@ class AliciaDLeader(Teleoperator):
         return self.config.directly_controls_robot
 
     @property
+    def uses_action_as_observation(self) -> bool:
+        """Whether to use leader actions as robot observations during recording."""
+        return self.config.use_action_as_observation
+
+    @property
+    def action_observation_delay_frames(self) -> int:
+        """Frame delay between observation and action when using leader state."""
+        return max(0, int(self.config.action_observation_delay_frames))
+
+    @property
     def is_connected(self) -> bool:
         """Check if leader arm is connected."""
         if self.robot_api is None:
@@ -225,4 +235,3 @@ class AliciaDLeader(Teleoperator):
             self.robot_api.disconnect()
 
         logger.info(f"{self} disconnected.")
-

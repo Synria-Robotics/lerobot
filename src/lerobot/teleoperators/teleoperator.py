@@ -163,6 +163,25 @@ class Teleoperator(abc.ABC):
         """
         return False
 
+    @property
+    def uses_action_as_observation(self) -> bool:
+        """
+        Whether the recorder should use this teleoperator's actions to overwrite
+        the robot joint observations during recording.
+
+        This is useful when the teleoperator directly controls the robot via
+        hardware wiring and the leader state is the most reliable observation.
+        """
+        return False
+
+    @property
+    def action_observation_delay_frames(self) -> int:
+        """
+        Number of frames to delay observations relative to actions when
+        `uses_action_as_observation` is enabled.
+        """
+        return 0
+
     @abc.abstractmethod
     def get_action(self) -> dict[str, Any]:
         """

@@ -73,6 +73,8 @@ class AliciaDFollower(Robot):
     def __init__(self, config: AliciaDFollowerConfig):
         super().__init__(config)
         self.config = config
+        self._arm_connected = False
+        self._arm_connection_required = True
         
         # Lazy import SDK only when robot is instantiated
         alicia_d_sdk, sdk_available = _import_sdk()
@@ -128,7 +130,20 @@ class AliciaDFollower(Robot):
         """Check if robot is connected."""
         if self.robot_api is None:
             return False
-        return self.robot_api.is_connected() and all(cam.is_connected for cam in self.cameras.values())
+        arm_ok = True
+        if self._arm_connection_required:
+            arm_ok = self._arm_connected and self.robot_api.is_connected()
+        return arm_ok and all(cam.is_connected for cam in self.cameras.values())
+
+    @property
+    def uses_teleop_state_for_observation(self) -> bool:
+        """Whether the recorder should replace joint observations with teleop state."""
+        return self.config.use_teleop_state_for_observation
+
+    def _should_connect_arm(self) -> bool:
+        if self.config.connect_arm is None:
+            return bool(self.config.port)
+        return self.config.connect_arm
 
     def connect(self, calibrate: bool = True) -> None:
         """
@@ -140,15 +155,20 @@ class AliciaDFollower(Robot):
         if self.is_connected:
             raise DeviceAlreadyConnectedError(f"{self} already connected")
 
-        # Manually connect the robot API
-        if not self.robot_api.connect():
-            raise ConnectionError("Failed to connect to Alicia-D robot")
+        self._arm_connection_required = self._should_connect_arm()
+        if self._arm_connection_required:
+            # Manually connect the robot API
+            if not self.robot_api.connect():
+                raise ConnectionError("Failed to connect to Alicia-D robot")
+            self._arm_connected = True
 
-        if not self.is_calibrated and calibrate:
-            logger.info(
-                "Mismatch between calibration values in the motor and the calibration file or no calibration file found"
-            )
-            self.calibrate()
+            if not self.is_calibrated and calibrate:
+                logger.info(
+                    "Mismatch between calibration values in the motor and the calibration file or no calibration file found"
+                )
+                self.calibrate()
+        else:
+            logger.info(f"{self} skipping arm connection; using cameras only.")
 
         # Connect cameras
         for cam in self.cameras.values():
@@ -193,31 +213,36 @@ class AliciaDFollower(Robot):
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
 
-        # Read joint positions in degrees (record in degrees)
-        start = time.perf_counter()
-        joint_state = self.robot_api.get_robot_state("joint_gripper")
-        
-        if joint_state is None:
-            raise DeviceNotConnectedError(f"Failed to read robot state from {self}")
-        
-        # Extract joints and gripper separately (gripper is NOT a joint)
-        # Joints: 6 angles in radians
-        joint_angles_rad = joint_state.angles
-        if len(joint_angles_rad) != 6:
-            raise ValueError(f"Expected 6 joint angles, got {len(joint_angles_rad)}")
-        joint_angles_deg = [angle * 180.0 / math.pi for angle in joint_angles_rad]
-        
-        # Gripper: separate actuator, not a joint
-        gripper_value = joint_state.gripper if joint_state.gripper is not None else 0.0
-        
+        if self._arm_connection_required:
+            # Read joint positions in degrees (record in degrees)
+            start = time.perf_counter()
+            joint_state = self.robot_api.get_robot_state("joint_gripper")
+            
+            if joint_state is None:
+                raise DeviceNotConnectedError(f"Failed to read robot state from {self}")
+            
+            # Extract joints and gripper separately (gripper is NOT a joint)
+            # Joints: 6 angles in radians
+            joint_angles_rad = joint_state.angles
+            if len(joint_angles_rad) != 6:
+                raise ValueError(f"Expected 6 joint angles, got {len(joint_angles_rad)}")
+            joint_angles_deg = [angle * 180.0 / math.pi for angle in joint_angles_rad]
+            
+            # Gripper: separate actuator, not a joint
+            gripper_value = joint_state.gripper if joint_state.gripper is not None else 0.0
+            
+            dt_ms = (time.perf_counter() - start) * 1e3
+            logger.debug(f"{self} read state: {dt_ms:.1f}ms")
+        else:
+            # Placeholder joint values; typically overwritten by teleop state in recording
+            joint_angles_deg = [0.0 for _ in self._joint_names]
+            gripper_value = 0.0
+
         # Convert to observation dictionary format (in degrees for recording)
         obs_dict = {}
         for i, joint_name in enumerate(self._joint_names):
             obs_dict[f"{joint_name}.pos"] = float(joint_angles_deg[i])
         obs_dict[f"{self._gripper_name}.pos"] = float(gripper_value)
-        
-        dt_ms = (time.perf_counter() - start) * 1e3
-        logger.debug(f"{self} read state: {dt_ms:.1f}ms")
 
         # Capture images from cameras
         for cam_key, cam in self.cameras.items():
@@ -240,6 +265,9 @@ class AliciaDFollower(Robot):
         """
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
+        if not self._arm_connection_required:
+            logger.warning(f"{self} arm connection disabled; skipping send_action.")
+            return action
 
         # Extract joint positions from action (actions are in degrees)
         goal_pos_deg = {key.removesuffix(".pos"): val for key, val in action.items() if key.endswith(".pos") and not key.startswith("gripper")}
@@ -310,17 +338,17 @@ class AliciaDFollower(Robot):
             raise DeviceNotConnectedError(f"{self} is not connected.")
 
         # Disconnect robot
-        if self.robot_api is not None:
+        if self._arm_connection_required and self.robot_api is not None and self._arm_connected:
             if self.config.disable_torque_on_disconnect:
                 try:
                     self.robot_api.torque_control("off")
                 except Exception as e:
                     logger.warning(f"Failed to disable torque on disconnect: {e}")
             self.robot_api.disconnect()
+            self._arm_connected = False
 
         # Disconnect cameras
         for cam in self.cameras.values():
             cam.disconnect()
 
         logger.info(f"{self} disconnected.")
-

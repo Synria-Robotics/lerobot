@@ -58,6 +58,7 @@ class BiAliciaDFollower(Robot):
             id=f"{config.id}_left" if config.id else None,
             calibration_dir=config.calibration_dir,
             port=config.left_arm_port,
+            connect_arm=config.left_arm_connect,
             disable_torque_on_disconnect=config.left_arm_disable_torque_on_disconnect,
             max_relative_target=config.left_arm_max_relative_target,
             gripper_type=config.left_arm_gripper_type,
@@ -71,6 +72,7 @@ class BiAliciaDFollower(Robot):
             id=f"{config.id}_right" if config.id else None,
             calibration_dir=config.calibration_dir,
             port=config.right_arm_port,
+            connect_arm=config.right_arm_connect,
             disable_torque_on_disconnect=config.right_arm_disable_torque_on_disconnect,
             max_relative_target=config.right_arm_max_relative_target,
             gripper_type=config.right_arm_gripper_type,
@@ -123,6 +125,11 @@ class BiAliciaDFollower(Robot):
             and self.right_arm.is_connected
             and all(cam.is_connected for cam in self.cameras.values())
         )
+
+    @property
+    def uses_teleop_state_for_observation(self) -> bool:
+        """Whether the recorder should replace joint observations with teleop state."""
+        return self.config.use_teleop_state_for_observation
 
     def connect(self, calibrate: bool = True) -> None:
         """Connect both arms and cameras."""

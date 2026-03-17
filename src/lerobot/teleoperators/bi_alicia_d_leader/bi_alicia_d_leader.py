@@ -58,6 +58,8 @@ class BiAliciaDLeader(Teleoperator):
             port=config.left_arm_port,
             gripper_type=config.left_arm_gripper_type,
             debug_mode=config.left_arm_debug_mode,
+            use_action_as_observation=config.use_action_as_observation,
+            action_observation_delay_frames=config.action_observation_delay_frames,
         )
 
         # Create right arm configuration
@@ -67,6 +69,8 @@ class BiAliciaDLeader(Teleoperator):
             port=config.right_arm_port,
             gripper_type=config.right_arm_gripper_type,
             debug_mode=config.right_arm_debug_mode,
+            use_action_as_observation=config.use_action_as_observation,
+            action_observation_delay_frames=config.action_observation_delay_frames,
         )
 
         # Create left and right arm instances
@@ -101,6 +105,16 @@ class BiAliciaDLeader(Teleoperator):
         through the computer. If False, actions will be sent through the computer.
         """
         return self.config.directly_controls_robot
+
+    @property
+    def uses_action_as_observation(self) -> bool:
+        """Whether to use leader actions as robot observations during recording."""
+        return self.config.use_action_as_observation
+
+    @property
+    def action_observation_delay_frames(self) -> int:
+        """Frame delay between observation and action when using leader state."""
+        return max(0, int(self.config.action_observation_delay_frames))
 
     @property
     def is_connected(self) -> bool:
@@ -173,4 +187,3 @@ class BiAliciaDLeader(Teleoperator):
         """Disconnect both leader arms."""
         self.left_arm.disconnect()
         self.right_arm.disconnect()
-
