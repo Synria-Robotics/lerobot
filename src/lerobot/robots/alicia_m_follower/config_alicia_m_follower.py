@@ -24,33 +24,38 @@ from lerobot.cameras import CameraConfig
 from ..config import RobotConfig
 
 
-@RobotConfig.register_subclass("alicia_d_follower")
+@RobotConfig.register_subclass("alicia_m_follower")
 @dataclass
-class AliciaDFollowerConfig(RobotConfig):
-    # Port to connect to the arm
+class AliciaMFollowerConfig(RobotConfig):
+    # Serial port used by the follower arm.
     port: str = ""
+
+    # Alicia-M model/configuration selection.
+    version: str = "v1_1"
+    variant: str | None = None
+    base_link: str = "base_link"
+    end_link: str = "tool0"
+
+    # Serial/control behavior.
+    baudrate: int = 1_000_000
+    control_aim: str | None = "operation"  # "teach" | "operation" | None(auto)
+    control_mode: str | None = "pv"  # "pv" | "mit" | None(SDK default)
+    skip_mit_init: bool = False
+    debug_mode: bool = False
 
     disable_torque_on_disconnect: bool = False
 
-    # `max_relative_target` limits the magnitude of the relative positional target vector for safety purposes.
-    # Set this to a positive scalar to have the same value for all motors, or a dictionary that maps motor
-    # names to the max_relative_target value for that motor.
+    # Maximum relative per-step target for safety clipping.
     max_relative_target: float | dict[str, float] | None = None
+
+    # Robot motion speed used by M-SDK set_robot_state(speed=...).
+    # Valid M-SDK range is usually [0, 400].
+    speed: int = 100
 
     # cameras
     cameras: dict[str, CameraConfig] = field(default_factory=dict)
 
-    # Gripper type for Alicia-D (e.g., "50mm" or "100mm")
-    gripper_type: str | None = None
-
-    # Debug mode for SDK
-    debug_mode: bool = False
-
-    # Speed in degrees per second for motion commands
-    speed_deg_s: int = 100
-
-    # Allow teleop state to overwrite joint observations when the leader is
-    # directly wired to the follower.
+    # Allow teleop state to overwrite joint observations when wired leader->follower.
     use_teleop_state_for_observation: bool = True
 
     # Whether to connect to the follower arm over serial.

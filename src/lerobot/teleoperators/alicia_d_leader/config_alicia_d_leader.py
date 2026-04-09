@@ -1,26 +1,22 @@
-#!/usr/bin/env python
-"""Alicia-D Leader Configuration
+#!/usr/bin/env python3
+# Copyright (c) 2025 Synria Robotics Co., Ltd.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# Author: Synria Robotics Team
+# Website: https://synriarobotics.ai
 
-Configuration class for Alicia-D Leader teleoperator integration with LeRobot.
-
-Copyright (c) 2025 Synria Robotics Co., Ltd.
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-Author: Synria Robotics Team
-Website: https://synriarobotics.ai
-"""
 
 from dataclasses import dataclass
 
@@ -53,3 +49,8 @@ class AliciaDLeaderConfig(TeleoperatorConfig):
     # Delay (in frames) between observation (leader state) and action (leader command).
     # A value of 1 means observation is the previous frame's leader state.
     action_observation_delay_frames: int = 1
+
+    # Target follower kinematic convention used for output joint values.
+    # - "alicia_d": no remapping (native Alicia-D leader joint ranges)
+    # - "alicia_m": remap Alicia-D leader joints to Alicia-M follower joint ranges
+    target_follower_type: str = "alicia_d"

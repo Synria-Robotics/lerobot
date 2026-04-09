@@ -94,6 +94,7 @@ from lerobot.robots import (  # noqa: F401
     Robot,
     RobotConfig,
     alicia_d_follower,
+    alicia_m_follower,
     bi_alicia_d_follower,
     bi_so100_follower,
     earthrover_mini_plus,

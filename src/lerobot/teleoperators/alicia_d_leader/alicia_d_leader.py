@@ -1,27 +1,21 @@
-#!/usr/bin/env python
-"""Alicia-D Leader Arm - LeRobot Teleoperator Integration
-
-This module provides LeRobot-compatible teleoperator interface for the Alicia-D leader arm,
-using the SynriaRobotAPI from Alicia-D SDK.
-
-Copyright (c) 2025 Synria Robotics Co., Ltd.
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-Author: Synria Robotics Team
-Website: https://synriarobotics.ai
-"""
+#!/usr/bin/env python3
+# Copyright (c) 2025 Synria Robotics Co., Ltd.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
+# Author: Synria Robotics Team
+# Website: https://synriarobotics.ai
 
 import logging
 import math
@@ -34,6 +28,84 @@ from ..teleoperator import Teleoperator
 from .config_alicia_d_leader import AliciaDLeaderConfig
 
 logger = logging.getLogger(__name__)
+
+URDF_LIMIT = {
+    "ALICIA_D": [
+        {"jointName": "Joint1", "lower": -157.5, "upper": 157.5},
+        {"jointName": "Joint2", "lower": -114.5, "upper": 114.5},
+        {"jointName": "Joint3", "lower": -28.6, "upper": 179.9},
+        {"jointName": "Joint4", "lower": -159.8, "upper": 159.8},
+        {"jointName": "Joint5", "lower": -89.9, "upper": 89.9},
+        {"jointName": "Joint6", "lower": -179.9, "upper": 179.9},
+    ],
+    "ALICIA_M": [
+        {"jointName": "Joint1", "lower": -157.5, "upper": 157.5},
+        {"jointName": "Joint2", "lower": -179.9, "upper": 0},
+        {"jointName": "Joint3", "lower": -179.9, "upper": 0},
+        {"jointName": "Joint4", "lower": -89.9, "upper": 89.9},
+        {"jointName": "Joint5", "lower": -89.9, "upper": 89.9},
+        {"jointName": "Joint6", "lower": -157.5, "upper": 157.5},
+    ],
+}
+
+
+def map_joint_value(value: float, src_min: float, src_max: float, dst_min: float, dst_max: float) -> float:
+    """Map value from source joint range to target range."""
+    if src_max == src_min:
+        return dst_min
+    return ((value - src_min) / (src_max - src_min)) * (dst_max - dst_min) + dst_min
+
+
+def map_joint_value_zero_anchored(
+    value: float,
+    src_min: float,
+    src_max: float,
+    dst_min: float,
+    dst_max: float,
+) -> float:
+    """
+    Map value with 0->0 anchoring.
+
+    We map negative and positive sides independently so neutral posture remains neutral:
+    - value <= 0 maps [src_min, 0] -> [dst_min, 0]
+    - value >= 0 maps [0, src_max] -> [0, dst_max]
+    """
+    # Clamp source first for safety.
+    value = max(src_min, min(src_max, value))
+
+    # Guard degenerate limits.
+    if src_min >= 0 or src_max <= 0:
+        return max(min(value, dst_max), dst_min)
+
+    if value <= 0.0:
+        if src_min == 0.0:
+            mapped = 0.0
+        else:
+            mapped = map_joint_value(value, src_min, 0.0, dst_min, 0.0)
+    else:
+        if src_max == 0.0:
+            mapped = 0.0
+        else:
+            mapped = map_joint_value(value, 0.0, src_max, 0.0, dst_max)
+
+    return max(min(mapped, dst_max), dst_min)
+
+
+def convert_joints_deg_from_alicia_d_to_alicia_m(joints_deg: list[float]) -> list[float]:
+    """Map Alicia-D joint values (deg) to Alicia-M joint values (deg)."""
+    # Direction mapping between Alicia-D and Alicia-M joint conventions.
+    motor_dir = [1.0, 1.0, -1.0, -1.0, 1.0, -1.0]
+    result = []
+    for i, joint in enumerate(joints_deg):
+        src_min = URDF_LIMIT["ALICIA_D"][i]["lower"]
+        src_max = URDF_LIMIT["ALICIA_D"][i]["upper"]
+        dst_min = URDF_LIMIT["ALICIA_M"][i]["lower"]
+        dst_max = URDF_LIMIT["ALICIA_M"][i]["upper"]
+        joint_src = float(joint) * motor_dir[i]
+        mapped = map_joint_value_zero_anchored(joint_src, src_min, src_max, dst_min, dst_max)
+        result.append(mapped)
+    return result
+
 
 # Lazy import function for Alicia-D SDK
 def _import_sdk():
@@ -88,6 +160,8 @@ class AliciaDLeader(Teleoperator):
         # Note: Gripper is NOT a joint - it's a separate actuator
         self._joint_names = [f"joint{i}" for i in range(1, 7)]  # 6 joints only
         self._gripper_name = "gripper"  # Separate from joints
+        self._last_action: dict[str, float] | None = None
+        self._consecutive_read_failures = 0
 
     @property
     def action_features(self) -> dict[str, type]:
@@ -124,6 +198,17 @@ class AliciaDLeader(Teleoperator):
     def action_observation_delay_frames(self) -> int:
         """Frame delay between observation and action when using leader state."""
         return max(0, int(self.config.action_observation_delay_frames))
+
+    @property
+    def target_follower_type(self) -> str:
+        """Target follower kinematic convention for output joint values."""
+        target = (self.config.target_follower_type or "alicia_d").lower()
+        if target not in {"alicia_d", "alicia_m"}:
+            logger.warning(
+                f"Unknown target_follower_type='{self.config.target_follower_type}', fallback to 'alicia_d'."
+            )
+            return "alicia_d"
+        return target
 
     @property
     def is_connected(self) -> bool:
@@ -183,37 +268,73 @@ class AliciaDLeader(Teleoperator):
 
         start = time.perf_counter()
         
-        # Get robot state once to avoid duplicate API calls
-        state = self.robot_api.get_robot_state("joint_gripper")
-        
+        # Retry transient serial timeouts from SDK (its logger.error raises Exception).
+        state = None
+        last_error: Exception | None = None
+        for attempt in range(3):
+            try:
+                state = self.robot_api.get_robot_state(
+                    "joint_gripper",
+                    timeout=1.0 + 0.5 * attempt,
+                )
+                if state is not None:
+                    break
+            except Exception as e:  # noqa: BLE001
+                last_error = e
+            time.sleep(0.001)
+
         if state is None:
+            self._consecutive_read_failures += 1
+            if self._last_action is not None:
+                logger.warning(
+                    f"{self} read timeout x{self._consecutive_read_failures}, "
+                    "reusing last valid leader action."
+                )
+                return dict(self._last_action)
+            if last_error is not None:
+                raise DeviceNotConnectedError(f"Failed to read robot state from {self}") from last_error
             raise DeviceNotConnectedError(f"Failed to read robot state from {self}")
         
         # Extract joints and gripper separately (gripper is NOT a joint)
         # Joints: 6 angles in radians
+        # print("======================================")
+        # print("state: ", state)
+        # print("======================================")
+
         joint_angles_rad = state.angles
         if len(joint_angles_rad) != 6:
             raise ValueError(f"Expected 6 joint angles, got {len(joint_angles_rad)}")
         joint_angles_deg = [angle * 180.0 / math.pi for angle in joint_angles_rad]
         
+        # print("======================================")
+        # print("joint_angles_deg: ", joint_angles_deg)
+        # print("======================================")
         # Gripper: separate actuator, not a joint
         gripper_value = state.gripper if state.gripper is not None else 0.0
         
         # Button status: leader arms have button status
         button_status = state.run_status_text if state else "idle"
         
-        # Format as action dictionary (in degrees for recording)
+        if self.target_follower_type == "alicia_m":
+            
+            joint_angles_deg = convert_joints_deg_from_alicia_d_to_alicia_m(joint_angles_deg)
+
+        # Format as action dictionary (in degrees for recording/control)
         action = {}
         for i, joint_name in enumerate(self._joint_names):
             action[f"{joint_name}.pos"] = float(joint_angles_deg[i])
         action[f"{self._gripper_name}.pos"] = float(gripper_value)
+        self._last_action = dict(action)
+        self._consecutive_read_failures = 0
         
         # Log button status for debugging (leader arms have buttons - any status is acceptable)
         logger.debug(f"{self} button status: {button_status}")
         
         dt_ms = (time.perf_counter() - start) * 1e3
         logger.debug(f"{self} read action: {dt_ms:.1f}ms")
-        
+        # print("======================================")
+        # print("action: ", action)
+        # print("======================================")
         return action
 
     def send_feedback(self, feedback: dict[str, float]) -> None:

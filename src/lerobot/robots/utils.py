@@ -64,6 +64,10 @@ def make_robot_from_config(config: RobotConfig) -> Robot:
         from .bi_alicia_d_follower import BiAliciaDFollower
 
         return BiAliciaDFollower(config)
+    elif config.type == "alicia_m_follower":
+        from .alicia_m_follower import AliciaMFollower
+
+        return AliciaMFollower(config)
     elif config.type == "reachy2":
         from .reachy2 import Reachy2Robot
 

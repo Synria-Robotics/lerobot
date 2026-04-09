@@ -17,6 +17,6 @@
 # Author: Synria Robotics Team
 # Website: https://synriarobotics.ai
 
-from .config_alicia_d_follower import AliciaDFollowerConfig
-from .alicia_d_follower import AliciaDFollower
+from .alicia_m_follower import AliciaMFollower
+from .config_alicia_m_follower import AliciaMFollowerConfig
 
