@@ -17,6 +17,7 @@ import logging
 import os
 import platform
 import select
+import shutil
 import subprocess
 import sys
 import time
@@ -29,6 +30,14 @@ import numpy as np
 import torch
 from accelerate import Accelerator
 from datasets.utils.logging import disable_progress_bar, enable_progress_bar
+
+_WARNED_MISSING_TTS_COMMANDS: set[str] = set()
+
+
+def _warn_missing_tts_command(executable: str) -> None:
+    if executable not in _WARNED_MISSING_TTS_COMMANDS:
+        logging.warning("Text-to-speech command '%s' not found. Skipping audio prompts.", executable)
+        _WARNED_MISSING_TTS_COMMANDS.add(executable)
 
 
 def inside_slurm():
@@ -217,10 +226,21 @@ def say(text: str, blocking: bool = False):
     else:
         raise RuntimeError("Unsupported operating system for text-to-speech.")
 
+    executable = cmd[0]
+    if shutil.which(executable) is None:
+        _warn_missing_tts_command(executable)
+        return
+
     if blocking:
-        subprocess.run(cmd, check=True)
+        try:
+            subprocess.run(cmd, check=True)
+        except FileNotFoundError:
+            _warn_missing_tts_command(executable)
     else:
-        subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW if system == "Windows" else 0)
+        try:
+            subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW if system == "Windows" else 0)
+        except FileNotFoundError:
+            _warn_missing_tts_command(executable)
 
 
 def log_say(text: str, play_sounds: bool = True, blocking: bool = False):
