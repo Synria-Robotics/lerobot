@@ -17,11 +17,12 @@
 from unittest.mock import patch
 
 from lerobot.scripts.lerobot_calibrate import CalibrateConfig, calibrate
-from lerobot.scripts.lerobot_record import DatasetRecordConfig, RecordConfig, record
+from lerobot.processor import make_default_processors
+from lerobot.scripts.lerobot_record import DatasetRecordConfig, RecordConfig, record, record_loop
 from lerobot.scripts.lerobot_replay import DatasetReplayConfig, ReplayConfig, replay
 from lerobot.scripts.lerobot_teleoperate import TeleoperateConfig, teleoperate
 from tests.fixtures.constants import DUMMY_REPO_ID
-from tests.mocks.mock_robot import MockRobotConfig
+from tests.mocks.mock_robot import MockRobot, MockRobotConfig
 from tests.mocks.mock_teleop import MockTeleopConfig
 
 
@@ -121,3 +122,31 @@ def test_record_and_replay(tmp_path):
         mock_get_safe_version.return_value = "v3.0"
         mock_snapshot_download.return_value = str(tmp_path / "record_and_replay")
         replay(replay_cfg)
+
+
+def test_record_loop_without_policy_or_teleop_exits_cleanly(caplog):
+    robot_cfg = MockRobotConfig()
+    robot = MockRobot(robot_cfg)
+    robot.connect()
+
+    teleop_action_processor, robot_action_processor, robot_observation_processor = make_default_processors()
+    events = {"exit_early": False, "stop_recording": False, "rerecord_episode": False}
+
+    with (
+        patch("lerobot.scripts.lerobot_record.precise_sleep"),
+        patch(
+            "lerobot.scripts.lerobot_record.time.perf_counter",
+            side_effect=[0.0, 0.0, 0.01, 0.02],
+        ),
+    ):
+        record_loop(
+            robot=robot,
+            events=events,
+            fps=30,
+            teleop_action_processor=teleop_action_processor,
+            robot_action_processor=robot_action_processor,
+            robot_observation_processor=robot_observation_processor,
+            control_time_s=0.015,
+        )
+
+    assert caplog.text.count("No policy or teleoperator provided, skipping action generation.") == 1

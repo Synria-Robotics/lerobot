@@ -32,8 +32,8 @@ logger = logging.getLogger(__name__)
 URDF_LIMIT = {
     "ALICIA_D": [
         {"jointName": "Joint1", "lower": -157.5, "upper": 157.5},
-        {"jointName": "Joint2", "lower": -114.5, "upper": 114.5},
-        {"jointName": "Joint3", "lower": -28.6, "upper": 179.9},
+        {"jointName": "Joint2", "lower": -100.2, "upper": 100.2},
+        {"jointName": "Joint3", "lower": -34.3, "upper": 126.0},
         {"jointName": "Joint4", "lower": -159.8, "upper": 159.8},
         {"jointName": "Joint5", "lower": -89.9, "upper": 89.9},
         {"jointName": "Joint6", "lower": -179.9, "upper": 179.9},
@@ -48,63 +48,103 @@ URDF_LIMIT = {
     ],
 }
 
+REVERSED_JOINT_INDEXES = {3, 5}
+PROPORTIONAL_JOINT_INDEXES = {2}
+NEGATED_INPUT_JOINT_INDEXES = {2}
+
+
+def clamp(value: float, lower: float, upper: float) -> float:
+    """
+    Clamp a value to the specified range.
+    """
+    return max(lower, min(value, upper))
+
 
 def map_joint_value(value: float, src_min: float, src_max: float, dst_min: float, dst_max: float) -> float:
-    """Map value from source joint range to target range."""
-    if src_max == src_min:
-        return dst_min
+    """
+    Linearly map a joint value from the source range to the target range.
+
+    :param value: Joint value
+    :param src_min: Source joint lower bound
+    :param src_max: Source joint upper bound
+    :param dst_min: Target joint lower bound
+    :param dst_max: Target joint upper bound
+    :return: Mapped joint value
+    """
     return ((value - src_min) / (src_max - src_min)) * (dst_max - dst_min) + dst_min
 
 
-def map_joint_value_zero_anchored(
+def map_joint_value_with_m_limit(
     value: float,
-    src_min: float,
-    src_max: float,
     dst_min: float,
     dst_max: float,
+    reverse: bool = False,
+    align_to_center: bool = True,
 ) -> float:
     """
-    Map value with 0->0 anchoring.
+    Keep a 1:1 D-to-M angle relationship while clamping the result to M limits.
 
-    We map negative and positive sides independently so neutral posture remains neutral:
-    - value <= 0 maps [src_min, 0] -> [dst_min, 0]
-    - value >= 0 maps [0, src_max] -> [0, dst_max]
+    Rules:
+    - If align_to_center=True, D's 0 degree maps to the midpoint of M's range
+    - If align_to_center=False, D's 0 degree maps to M's 0 degree
+    - 1 degree in M corresponds to 1 degree in D
+    - If reverse=True, the target direction is flipped
+    - The final output will not exceed M's joint limits
     """
-    # Clamp source first for safety.
-    value = max(src_min, min(src_max, value))
-
-    # Guard degenerate limits.
-    if src_min >= 0 or src_max <= 0:
-        return max(min(value, dst_max), dst_min)
-
-    if value <= 0.0:
-        if src_min == 0.0:
-            mapped = 0.0
-        else:
-            mapped = map_joint_value(value, src_min, 0.0, dst_min, 0.0)
-    else:
-        if src_max == 0.0:
-            mapped = 0.0
-        else:
-            mapped = map_joint_value(value, 0.0, src_max, 0.0, dst_max)
-
-    return max(min(mapped, dst_max), dst_min)
+    dst_origin = (dst_min + dst_max) / 2 if align_to_center else 0.0
+    direction = -1.0 if reverse else 1.0
+    mapped = direction * value + dst_origin
+    return clamp(mapped, min(dst_min, dst_max), max(dst_min, dst_max))
 
 
 def convert_joints_deg_from_alicia_d_to_alicia_m(joints_deg: list[float]) -> list[float]:
-    """Map Alicia-D joint values (deg) to Alicia-M joint values (deg)."""
-    # Direction mapping between Alicia-D and Alicia-M joint conventions.
-    motor_dir = [1.0, 1.0, -1.0, -1.0, 1.0, -1.0]
+    """
+    Convert Alicia-D joint values to Alicia-M joint values.
+
+    Notes:
+    - This function returns a new list
+    - D's 0 degree is aligned to the midpoint of M's joint range
+    - 1 degree in M corresponds to 1 degree in D, without proportional scaling
+    - Python indexes 3 and 5 (i.e. joints 4 and 6) use reversed mapping
+    - Joint 3 (index 2) is handled specially:
+      first negate the input, then apply proportional mapping
+      from D[-126.0, 34.3] to M[-179.9, 0]
+
+    :param joints_deg: Alicia-D joint values
+    :return: Alicia-M joint values
+    """
     result = []
+
     for i, joint in enumerate(joints_deg):
-        src_min = URDF_LIMIT["ALICIA_D"][i]["lower"]
-        src_max = URDF_LIMIT["ALICIA_D"][i]["upper"]
-        dst_min = URDF_LIMIT["ALICIA_M"][i]["lower"]
-        dst_max = URDF_LIMIT["ALICIA_M"][i]["upper"]
-        joint_src = float(joint) * motor_dir[i]
-        mapped = map_joint_value_zero_anchored(joint_src, src_min, src_max, dst_min, dst_max)
+        if i in PROPORTIONAL_JOINT_INDEXES:
+            if i in NEGATED_INPUT_JOINT_INDEXES:
+                joint = -joint
+                src_min = -URDF_LIMIT["ALICIA_D"][i]["upper"]
+                src_max = -URDF_LIMIT["ALICIA_D"][i]["lower"]
+            else:
+                src_min = URDF_LIMIT["ALICIA_D"][i]["lower"]
+                src_max = URDF_LIMIT["ALICIA_D"][i]["upper"]
+            dst_min = URDF_LIMIT["ALICIA_M"][i]["lower"]
+            dst_max = URDF_LIMIT["ALICIA_M"][i]["upper"]
+            mapped = map_joint_value(
+                clamp(joint, src_min, src_max),
+                src_min,
+                src_max,
+                dst_min,
+                dst_max,
+            )
+            mapped = clamp(mapped, min(dst_min, dst_max), max(dst_min, dst_max))
+        else:
+            mapped = map_joint_value_with_m_limit(
+                joint,
+                URDF_LIMIT["ALICIA_M"][i]["lower"],
+                URDF_LIMIT["ALICIA_M"][i]["upper"],
+                reverse=i in REVERSED_JOINT_INDEXES,
+            )
         result.append(mapped)
+
     return result
+
 
 
 # Lazy import function for Alicia-D SDK

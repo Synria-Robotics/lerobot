@@ -80,6 +80,30 @@ from lerobot.utils.constants import HF_LEROBOT_HOME
 CODEBASE_VERSION = "v3.0"
 
 
+def _resolve_existing_dataset_root(repo_id: str, root: str | Path | None) -> Path:
+    """Resolve a local dataset root from either the dataset directory or its parent.
+
+    Existing code and docs are inconsistent about whether `root` should point to:
+    - the dataset directory itself, or
+    - a parent directory containing a `repo_id` subdirectory.
+
+    For loading an already-recorded dataset, accept both forms when possible.
+    """
+    if root is None:
+        return HF_LEROBOT_HOME / repo_id
+
+    root_path = Path(root)
+    direct_meta = root_path / INFO_PATH
+    nested_root = root_path / repo_id
+    nested_meta = nested_root / INFO_PATH
+
+    if not direct_meta.exists() and nested_meta.exists():
+        logging.info(f"Resolved dataset root from parent directory: {root_path} -> {nested_root}")
+        return nested_root
+
+    return root_path
+
+
 class LeRobotDatasetMetadata:
     def __init__(
         self,
@@ -91,7 +115,7 @@ class LeRobotDatasetMetadata:
     ):
         self.repo_id = repo_id
         self.revision = revision if revision else CODEBASE_VERSION
-        self.root = Path(root) if root is not None else HF_LEROBOT_HOME / repo_id
+        self.root = _resolve_existing_dataset_root(repo_id, root)
         self.writer = None
         self.latest_episode = None
         self.metadata_buffer: list[dict] = []
@@ -678,7 +702,7 @@ class LeRobotDataset(torch.utils.data.Dataset):
         """
         super().__init__()
         self.repo_id = repo_id
-        self.root = Path(root) if root else HF_LEROBOT_HOME / repo_id
+        self.root = _resolve_existing_dataset_root(repo_id, root)
         self.image_transforms = image_transforms
         self.delta_timestamps = delta_timestamps
         self.episodes = episodes

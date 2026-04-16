@@ -237,8 +237,14 @@ class OpenCVCamera(Camera):
         success = self.videocapture.set(cv2.CAP_PROP_FPS, float(self.fps))
         actual_fps = self.videocapture.get(cv2.CAP_PROP_FPS)
         # Use math.isclose for robust float comparison
-        if not success or not math.isclose(self.fps, actual_fps, rel_tol=1e-3):
+        if not math.isclose(self.fps, actual_fps, rel_tol=1e-3):
             raise RuntimeError(f"{self} failed to set fps={self.fps} ({actual_fps=}).")
+        if not success:
+            logger.warning(
+                "%s reported fps set failure but applied the requested value (%s). Continuing.",
+                self,
+                actual_fps,
+            )
 
     def _validate_fourcc(self) -> None:
         """Validates and sets the camera's FOURCC code."""
@@ -274,15 +280,27 @@ class OpenCVCamera(Camera):
         height_success = self.videocapture.set(cv2.CAP_PROP_FRAME_HEIGHT, float(self.capture_height))
 
         actual_width = int(round(self.videocapture.get(cv2.CAP_PROP_FRAME_WIDTH)))
-        if not width_success or self.capture_width != actual_width:
+        if self.capture_width != actual_width:
             raise RuntimeError(
                 f"{self} failed to set capture_width={self.capture_width} ({actual_width=}, {width_success=})."
             )
+        if not width_success:
+            logger.warning(
+                "%s reported width set failure but applied the requested value (%s). Continuing.",
+                self,
+                actual_width,
+            )
 
         actual_height = int(round(self.videocapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-        if not height_success or self.capture_height != actual_height:
+        if self.capture_height != actual_height:
             raise RuntimeError(
                 f"{self} failed to set capture_height={self.capture_height} ({actual_height=}, {height_success=})."
+            )
+        if not height_success:
+            logger.warning(
+                "%s reported height set failure but applied the requested value (%s). Continuing.",
+                self,
+                actual_height,
             )
 
     @staticmethod

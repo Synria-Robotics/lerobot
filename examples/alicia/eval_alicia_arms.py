@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-"""Evaluate a trained policy (ACT, Diffusion, etc.) on bimanual Alicia-D robot arms.
+"""Evaluate a trained policy (ACT, Diffusion, etc.) on Alicia robot arms.
 
-This script loads a trained policy and runs it on the bimanual robot for evaluation.
+This script loads a trained policy and runs it on a real Alicia robot for evaluation.
 Optionally records evaluation episodes to a dataset.
 
-Supports all policy types: ACT, Diffusion, TDMPC, VQBeT, etc.
+Supports Alicia-D, Alicia-M, and bimanual Alicia-D robot configs, along with
+all policy types: ACT, Diffusion, TDMPC, VQBeT, etc.
 
 Example usage for ACT:
 ```shell
@@ -51,6 +52,7 @@ Copyright (c) 2025 Synria Robotics Co., Ltd.
 
 import json
 import logging
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -62,11 +64,8 @@ from lerobot.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.datasets.utils import hw_to_dataset_features
 from lerobot.policies.factory import make_policy, make_pre_post_processors
 from lerobot.processor import make_default_processors
-from lerobot.robots import (  # noqa: F401
-    RobotConfig,
-    bi_alicia_d_follower,
-    make_robot_from_config,
-)
+from lerobot.robots import RobotConfig, make_robot_from_config  # noqa: F401
+from lerobot.robots import alicia_d_follower, alicia_m_follower, bi_alicia_d_follower  # noqa: F401
 from lerobot.scripts.lerobot_record import record_loop
 from lerobot.utils.constants import ACTION, OBS_STR
 from lerobot.utils.control_utils import init_keyboard_listener, is_headless
@@ -80,7 +79,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class EvalConfig:
-    """Configuration for policy evaluation on bimanual robot."""
+    """Configuration for policy evaluation on Alicia robot arms."""
 
     # Policy configuration
     policy: PreTrainedConfig | None = None
@@ -93,9 +92,14 @@ class EvalConfig:
     duration: float = 120.0  # Duration to run evaluation per episode (seconds)
     fps: float = 10.0  # Action execution frequency (Hz)
     num_episodes: int = 5  # Number of evaluation episodes
+    reset_time_s: float = 15.0  # Manual reset wait time between episodes (seconds)
     record_eval: bool = False  # Whether to record evaluation episodes to a dataset
     eval_dataset_repo_id: str = "temp/eval_not_saved"  # Dataset repo ID (required for features, even if not recording)
     display_data: bool = True  # Display observations and actions in rerun
+    # Rename observation keys from the current robot/camera setup to the keys expected by the policy.
+    # Example:
+    #   --rename_map='{"observation.images.front_new":"observation.images.front"}'
+    rename_map: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self):
         # HACK: We parse again the cli args here to get the pretrained path if there was one.
@@ -162,6 +166,25 @@ class EvalConfig:
         return ["policy"]
 
 
+def wait_for_manual_reset(events: dict[str, bool], wait_time_s: float) -> None:
+    """Wait for manual environment reset without entering an idle control loop.
+
+    Right arrow exits the wait early. ESC stops the whole evaluation. Left arrow
+    keeps its existing meaning via the shared event flags.
+    """
+    if wait_time_s <= 0:
+        return
+
+    deadline = time.perf_counter() + wait_time_s
+    while time.perf_counter() < deadline:
+        if events["stop_recording"] or events["rerecord_episode"]:
+            return
+        if events["exit_early"]:
+            events["exit_early"] = False
+            return
+        time.sleep(0.1)
+
+
 @parser.wrap()
 def eval_policy(cfg: EvalConfig):
     """Main entry point for policy evaluation."""
@@ -200,7 +223,7 @@ def eval_policy(cfg: EvalConfig):
     policy = make_policy(
         cfg=cfg.policy,
         ds_meta=dataset.meta,
-        rename_map=cfg.rename_map if hasattr(cfg, 'rename_map') else None,
+        rename_map=cfg.rename_map,
     )
     policy.eval()
     logger.info(f"Policy loaded and set to eval mode (type: {cfg.policy.type})")
@@ -214,9 +237,14 @@ def eval_policy(cfg: EvalConfig):
         pretrained_path=cfg.policy.pretrained_path,
         dataset_stats=dataset.meta.stats,
         # The inference device is automatically set to match the detected hardware
-        preprocessor_overrides={"device_processor": {"device": str(cfg.policy.device)}},
+        preprocessor_overrides={
+            "device_processor": {"device": str(cfg.policy.device)},
+            "rename_observations_processor": {"rename_map": cfg.rename_map},
+        },
     )
     logger.info("Processors loaded")
+    if cfg.rename_map:
+        logger.info(f"Using rename_map for inference: {cfg.rename_map}")
 
     # Always create a dataset for features (needed by record_loop)
     # Dataset is always created but episodes are only saved when record_eval=true
@@ -247,7 +275,7 @@ def eval_policy(cfg: EvalConfig):
     # Initialize keyboard listener and rerun visualization
     listener, events = init_keyboard_listener()
     if cfg.display_data:
-        init_rerun(session_name="bi_alicia_d_evaluate")
+        init_rerun(session_name="alicia_evaluate")
 
     if not robot.is_connected:
         raise ValueError("Robot is not connected!")
@@ -281,18 +309,11 @@ def eval_policy(cfg: EvalConfig):
             if not events["stop_recording"] and (
                 (recorded_episodes < cfg.num_episodes - 1) or events["rerecord_episode"]
             ):
-                log_say("Reset the environment")
-                record_loop(
-                    robot=robot,
-                    events=events,
-                    fps=cfg.fps,
-                    control_time_s=cfg.duration,
-                    single_task=cfg.task,
-                    display_data=cfg.display_data,
-                    teleop_action_processor=teleop_action_processor,
-                    robot_action_processor=robot_action_processor,
-                    robot_observation_processor=robot_observation_processor,
+                log_say(
+                    f"Manually reset the environment. Waiting up to {cfg.reset_time_s:.0f} seconds. "
+                    "Press Right Arrow to continue early."
                 )
+                wait_for_manual_reset(events, cfg.reset_time_s)
 
             if events["rerecord_episode"]:
                 log_say("Re-record episode")

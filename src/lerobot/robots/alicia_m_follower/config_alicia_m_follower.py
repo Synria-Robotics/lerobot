@@ -39,8 +39,10 @@ class AliciaMFollowerConfig(RobotConfig):
     # Serial/control behavior.
     baudrate: int = 1_000_000
     control_aim: str | None = "operation"  # "teach" | "operation" | None(auto)
-    control_mode: str | None = "pv"  # "pv" | "mit" | None(SDK default)
+    control_mode: str | None = "mit"  # "pv" | "mit" | None(SDK default)
     skip_mit_init: bool = False
+    # Effective only in MIT mode. False sends direct MIT PD commands without firmware interpolation.
+    use_interpolation: bool = False
     debug_mode: bool = False
 
     disable_torque_on_disconnect: bool = False

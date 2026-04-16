@@ -70,6 +70,10 @@ def get_cv2_backend() -> int:
 
     if platform.system() == "Windows":
         return int(cv2.CAP_MSMF)  # Use MSMF for Windows instead of AVFOUNDATION
+    elif platform.system() == "Linux":
+        # Prefer V4L2 for /dev/video* devices. CAP_ANY often falls back to FFMPEG on Linux,
+        # which can mis-detect stream profiles and fail to read from UVC camera nodes.
+        return int(cv2.CAP_V4L2)
     # elif platform.system() == "Darwin":  # macOS
     #     return cv2.CAP_AVFOUNDATION
     else:  # Linux and others

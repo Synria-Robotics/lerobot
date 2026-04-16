@@ -154,6 +154,19 @@ class AliciaMFollower(Robot):
         logger.info("Alicia-M robots are typically pre-calibrated. Use zero_calibration() if needed.")
 
     def configure(self) -> None:
+        control_mode = (self.config.control_mode or "").lower()
+        if control_mode == "mit":
+            logger.info(
+                "%s using MIT %s mode.",
+                self,
+                "interpolation" if self.config.use_interpolation else "direct PD",
+            )
+        elif not self.config.use_interpolation:
+            logger.warning(
+                "%s use_interpolation is ignored when control_mode=%s.",
+                self,
+                self.config.control_mode,
+            )
         logger.debug(f"{self} configured.")
 
     def _get_joint_state_with_retry(self, retries: int = 3, sleep_s: float = 0.02):
@@ -186,6 +199,24 @@ class AliciaMFollower(Robot):
             raise last_error
         return None
 
+    def _extract_joint_gripper_state(self, joint_state: Any) -> tuple[list[float], float]:
+        """Support both dict-style and object-style SDK state payloads."""
+        if isinstance(joint_state, dict):
+            joint_angles_rad = joint_state.get("angles")
+            gripper_raw = joint_state.get("gripper")
+        else:
+            joint_angles_rad = getattr(joint_state, "angles", None)
+            gripper_raw = getattr(joint_state, "gripper", None)
+
+        if joint_angles_rad is None:
+            raise ValueError(f"{self} joint_gripper state is missing 'angles': {joint_state!r}")
+        if len(joint_angles_rad) != 6:
+            raise ValueError(f"Expected 6 joint angles, got {len(joint_angles_rad)}")
+
+        joint_angles_rad = [float(angle) for angle in joint_angles_rad]
+        gripper_value = 0.0 if gripper_raw is None else float(gripper_raw)
+        return joint_angles_rad, gripper_value
+
     def get_observation(self) -> dict[str, Any]:
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
@@ -196,11 +227,8 @@ class AliciaMFollower(Robot):
             if joint_state is None:
                 raise DeviceNotConnectedError(f"Failed to read robot state from {self}")
 
-            joint_angles_rad = joint_state.angles
-            if len(joint_angles_rad) != 6:
-                raise ValueError(f"Expected 6 joint angles, got {len(joint_angles_rad)}")
+            joint_angles_rad, gripper_value = self._extract_joint_gripper_state(joint_state)
             joint_angles_deg = [angle * 180.0 / math.pi for angle in joint_angles_rad]
-            gripper_value = joint_state.gripper if joint_state.gripper is not None else 0.0
             dt_ms = (time.perf_counter() - start) * 1e3
             logger.debug(f"{self} read state: {dt_ms:.1f}ms")
         else:
@@ -271,6 +299,7 @@ class AliciaMFollower(Robot):
             joint_format="deg",
             speed=self.config.speed,
             wait_for_completion=False,
+            use_interpolation=self.config.use_interpolation,
         )
         if not success:
             logger.warning(f"Failed to send action to {self}")
