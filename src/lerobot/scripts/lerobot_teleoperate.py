@@ -161,8 +161,11 @@ def teleop_loop(
         # Process action for robot through pipeline
         robot_action_to_send = robot_action_processor((teleop_action, obs))
 
-        # Send processed action to robot (robot_action_processor.to_output should return dict[str, Any])
-        _ = robot.send_action(robot_action_to_send)
+        # When the teleoperator controls the robot through a direct hardware
+        # connection, sending the action again from the computer would duplicate
+        # the command. Keep processing it for visualization, but skip transmission.
+        if not teleop.directly_controls_robot:
+            _ = robot.send_action(robot_action_to_send)
 
         if display_data:
             # Process robot observation through pipeline

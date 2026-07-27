@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from lerobot.scripts.lerobot_calibrate import CalibrateConfig, calibrate
 from lerobot.processor import make_default_processors
@@ -23,7 +23,7 @@ from lerobot.scripts.lerobot_replay import DatasetReplayConfig, ReplayConfig, re
 from lerobot.scripts.lerobot_teleoperate import TeleoperateConfig, teleoperate
 from tests.fixtures.constants import DUMMY_REPO_ID
 from tests.mocks.mock_robot import MockRobot, MockRobotConfig
-from tests.mocks.mock_teleop import MockTeleopConfig
+from tests.mocks.mock_teleop import MockTeleop, MockTeleopConfig
 
 
 def test_calibrate():
@@ -41,6 +41,24 @@ def test_teleoperate():
         teleop_time_s=0.1,
     )
     teleoperate(cfg)
+
+
+def test_teleoperate_skips_send_action_when_teleop_directly_controls_robot():
+    robot_cfg = MockRobotConfig()
+    teleop_cfg = MockTeleopConfig()
+    cfg = TeleoperateConfig(
+        robot=robot_cfg,
+        teleop=teleop_cfg,
+        teleop_time_s=0.1,
+    )
+
+    with (
+        patch.object(MockTeleop, "directly_controls_robot", new_callable=PropertyMock, return_value=True),
+        patch.object(MockRobot, "send_action", autospec=True) as mock_send_action,
+    ):
+        teleoperate(cfg)
+
+    mock_send_action.assert_not_called()
 
 
 def test_record_and_resume(tmp_path):
